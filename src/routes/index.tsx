@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ConnectionScene } from '@/components/ConnectionScene';
 import campus from '@/assets/campus-friends.jpg';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { LongJourney } from '@/components/LongJourney';
 
 export const Route = createFileRoute('/')({
   ssr: false,
@@ -59,6 +61,7 @@ function Index() {
           <a href="#universities">For universities <ChevronDown className="inline size-3 ml-1" /></a>
         </nav>
         <div className="nav-actions">
+          <ThemeToggle />
           <Button variant="ghost" asChild className="login-link text-xs"><a href={links.login}>Log in</a></Button>
           <Button variant="ink" asChild className="text-xs h-10 px-5"><a href={links.register}>Get started <ArrowUpRight /></a></Button>
           <Button variant="ghost" size="icon" className="mobile-menu" aria-label="Open navigation" onClick={() => setMobileOpen(true)}><Menu /></Button>
@@ -103,8 +106,9 @@ function Index() {
       <section className="section"><Reveal><div className="eyebrow">THE LITTLE THINGS THAT MAKE A BIG DIFFERENCE</div><h2 className="section-title">More connection. More momentum.</h2></Reveal><div className="tools-row">
         {[{ icon: MessageCircle, title: 'Start a conversation.', text: 'Ask the class question. Share the big idea. Forums and chats make it easier to connect with people who get it.' },{ icon: Users, title: 'Build your network.', text: 'Find familiar faces and fresh perspectives. Connect across your campus and major, one conversation at a time.' },{ icon: BadgeCheck, title: 'Good vibes get rewarded.', text: 'Meet Vibeys. Earn points when you participate, post, and support your community—then redeem them for rewards.' }].map((item, i) => <Reveal key={item.title} delay={i * .1}><div className="tool-icon"><item.icon size={20} /></div><h3>{item.title}</h3><p>{item.text}</p></Reveal>)}
       </div></section>
-      <section className="university" id="universities"><div><div className="eyebrow mb-3"><GraduationCap size={16} /> FOR COLLEGES & UNIVERSITIES</div><h3>Stronger connections. Brighter outcomes.</h3><p>Support belonging, student engagement, and career readiness on your campus.</p></div><div className="flex gap-3 flex-wrap"><Button variant="soft" size="hero" asChild><a href={links.school}>School admin login <ArrowUpRight /></a></Button><Button variant="ink" size="hero" asChild><a href={links.demo}>Let’s talk <ArrowUpRight /></a></Button></div></section>
     </div>
+    <LongJourney links={links} />
+    <div className="site-wrap"><section className="university" id="universities"><div><div className="eyebrow mb-3"><GraduationCap size={16} /> FOR COLLEGES & UNIVERSITIES</div><h3>Stronger connections. Brighter outcomes.</h3><p>Support belonging, student engagement, and career readiness on your campus.</p></div><div className="flex gap-3 flex-wrap"><Button variant="soft" size="hero" asChild><a href={links.school}>School admin login <ArrowUpRight /></a></Button><Button variant="ink" size="hero" asChild><a href={links.demo}>Let’s talk <ArrowUpRight /></a></Button></div></section></div>
     <section className="final-band"><Reveal className="site-wrap"><div className="eyebrow">FRIENDS. FUNDS. FUTURES.</div><h2>Your next chapter<br />starts with a hello.</h2><p>Find your people. Back your dreams. Become your kind of brilliant.</p><Button variant="brand" size="hero" asChild><a href={links.register}>Say hello to ByeUni <ArrowUpRight /></a></Button></Reveal></section>
     <footer className="site-wrap footer"><Logo /><div className="footer-links"><a href="https://byeuni.com/keys-to-byeuni-success/">About us</a><a href="https://byeuni.com/byeuni-faqs/">FAQs</a><a href="https://byeuni.com/contact-us/">Contact</a><a href="https://byeuni.com/privacy-policy-2/">Privacy</a><a href="https://byeuni.com/byeuni-llc-terms-of-service/">Terms</a></div><span className="copyright">© 2026 ByeUni. All good things reserved.</span></footer>
 

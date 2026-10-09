@@ -1,4 +1,4 @@
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Environment, Lightformer } from '@react-three/drei';
 import { useEffect, useRef, useState } from 'react';
 import { useReducedMotion } from 'motion/react';
@@ -7,6 +7,8 @@ import type { Group } from 'three';
 type SceneColors = { mint: string; ink: string; white: string; lilac: string };
 
 function Sculpture({ compact, colors }: { compact: boolean; colors: SceneColors }) {
+  const { size } = useThree();
+  const mobile = size.width < 760;
   const group = useRef<Group>(null);
   const time = useRef(0);
   const reduce = useReducedMotion();
@@ -19,7 +21,7 @@ function Sculpture({ compact, colors }: { compact: boolean; colors: SceneColors 
     group.current.rotation.z = -.2 + Math.sin(time.current * .3) * .05;
     group.current.position.y = Math.sin(time.current * .6) * .08;
   });
-  return <group ref={group} position={[compact ? 0 : 2.25, 0, 0]} rotation={[.2, .2, -.2]} scale={compact ? .8 : 1.25}>
+  return <group ref={group} position={[compact || mobile ? 0 : 2.25, 0, 0]} rotation={[.2, .2, -.2]} scale={compact ? 1.5 : mobile ? .83 : 1.25}>
     <mesh rotation={[.15, 0, .2]}>
       <torusKnotGeometry args={[1.12, .33, 160, 24, 2, 3]} />
       <meshPhysicalMaterial color={colors.mint} roughness={.28} metalness={.12} clearcoat={.8} clearcoatRoughness={.24} />

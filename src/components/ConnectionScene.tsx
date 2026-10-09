@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useReducedMotion } from 'motion/react';
 import type { Group } from 'three';
 
-function Sculpture({ compact, colors }: { compact: boolean; colors: string[] }) {
+type SceneColors = { mint: string; ink: string; white: string; lilac: string };
+
+function Sculpture({ compact, colors }: { compact: boolean; colors: SceneColors }) {
   const group = useRef<Group>(null);
   const time = useRef(0);
   const reduce = useReducedMotion();
@@ -20,32 +22,32 @@ function Sculpture({ compact, colors }: { compact: boolean; colors: string[] }) 
   return <group ref={group} position={[compact ? 0 : 2.25, 0, 0]} rotation={[.2, .2, -.2]} scale={compact ? .8 : 1.25}>
     <mesh rotation={[.15, 0, .2]}>
       <torusKnotGeometry args={[1.12, .33, 160, 24, 2, 3]} />
-      <meshPhysicalMaterial color={colors[0]} roughness={.28} metalness={.12} clearcoat={.8} clearcoatRoughness={.24} />
+      <meshPhysicalMaterial color={colors.mint} roughness={.28} metalness={.12} clearcoat={.8} clearcoatRoughness={.24} />
     </mesh>
     <mesh position={[1.8, 1.4, -.5]} rotation={[.5,.6,.2]}>
       <torusGeometry args={[.36,.11,16,48]} />
-      <meshStandardMaterial color={colors[3]} roughness={.35} metalness={.15} />
+      <meshStandardMaterial color={colors.lilac} roughness={.35} metalness={.15} />
     </mesh>
     <mesh position={[-1.65,-1.15,.1]} rotation={[.3,.4,.2]}>
       <octahedronGeometry args={[.27,0]} />
-      <meshStandardMaterial color={colors[1]} metalness={.2} roughness={.4} />
+      <meshStandardMaterial color={colors.ink} metalness={.2} roughness={.4} />
     </mesh>
   </group>;
 }
 
 export function ConnectionScene({ compact = false }: { compact?: boolean }) {
-  const [colors, setColors] = useState<string[]>([]);
+  const [colors, setColors] = useState<SceneColors | null>(null);
   useEffect(() => {
     const css = getComputedStyle(document.documentElement);
-    setColors(['--scene-mint','--scene-ink','--scene-white','--scene-lilac'].map(token => css.getPropertyValue(token).trim()));
+    setColors({ mint: css.getPropertyValue('--scene-mint').trim(), ink: css.getPropertyValue('--scene-ink').trim(), white: css.getPropertyValue('--scene-white').trim(), lilac: css.getPropertyValue('--scene-lilac').trim() });
   }, []);
-  if (!colors.length) return null;
+  if (!colors) return null;
   return <Canvas dpr={[1,1.5]} camera={{ position: [0,0,10], fov: compact ? 32 : 39 }} gl={{ antialias: true, alpha: true }} aria-label="Animated mint-green connection sculpture">
     <ambientLight intensity={1} />
     <directionalLight position={[3,6,5]} intensity={2.2} />
     <Environment resolution={128}>
-      <Lightformer position={[0,5,0]} scale={[10,10,1]} intensity={2} color={colors[2]} />
-      <Lightformer position={[-5,1,3]} rotation-y={Math.PI / 2} scale={[10,4,1]} intensity={1.5} color={colors[2]} />
+      <Lightformer position={[0,5,0]} scale={[10,10,1]} intensity={2} color={colors.white} />
+      <Lightformer position={[-5,1,3]} rotation-y={Math.PI / 2} scale={[10,4,1]} intensity={1.5} color={colors.white} />
     </Environment>
     <Sculpture compact={compact} colors={colors} />
   </Canvas>;

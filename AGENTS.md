@@ -12,3 +12,5 @@
 - Keep the landing page at `/` and preserve original ByeUni destinations for account and campaign actions; this redesign does not duplicate the hosted platform.
 - Isolate React Three Fiber artwork in `ConnectionScene` and keep its route client-rendered; WebGL requires browser APIs.
 - Define visual tokens and reusable motion styles in the global design system; page controls use shared Button and Dialog components.
+- Keep theme preferences in browser storage and apply the root dark class after mounting; visual preferences do not need an account or backend.
+- Keep extended student-journey content in LongJourney using global design tokens; this keeps the landing route focused and preserves platform destinations.

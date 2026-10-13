@@ -4,6 +4,7 @@ import {
   Trash2, UserCheck, UserX, Users, Wand2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dropdown } from '@/components/ui/dropdown';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
@@ -68,17 +69,12 @@ export function UsersView({ focus }: { focus?: string | undefined }) {
     <article className="db-panel adm-table-panel">
       <Toolbar>
         <SearchBox value={query} onChange={value => { setQuery(value); pager.reset(); }} placeholder="Search name, email, or phone" />
-        {tab !== 'guest' ? <label className="adm-select"><span className="sr-only">School</span>
-          <select value={school} onChange={event => { setSchool(event.target.value); pager.reset(); }}>
-            <option value="all">All schools</option>
-            {schools.map(s => <option key={s.id} value={s.id}>{s.short}</option>)}
-          </select>
-        </label> : null}
-        {tab !== 'suspended' ? <label className="adm-select"><span className="sr-only">Status</span>
-          <select value={status} onChange={event => { setStatus(event.target.value); pager.reset(); }}>
-            <option value="all">Any status</option><option value="active">Active</option><option value="inactive">Inactive</option>
-          </select>
-        </label> : null}
+        {tab !== 'guest' ? <Dropdown variant="pill" label="School" value={school} onChange={value => { setSchool(value); pager.reset(); }} options={[
+          { value: 'all', label: 'All schools' }, ...schools.map(s => ({ value: s.id, label: s.short })),
+        ]} /> : null}
+        {tab !== 'suspended' ? <Dropdown variant="pill" label="Status" value={status} onChange={value => { setStatus(value); pager.reset(); }} options={[
+          { value: 'all', label: 'Any status' }, { value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' },
+        ]} /> : null}
         {selection.selected.length ? <Button variant="destructive" className="rounded-full ml-auto" onClick={() => setConfirmIds(selection.selected)}><Trash2 /> Delete {selection.selected.length}</Button> : null}
       </Toolbar>
       {tab === 'fundraiser' ? <p className="adm-note">You can only delete students who have no campaigns.</p> : null}
@@ -237,8 +233,8 @@ function UserEditor({ type, onClose }: { type: UserType | null; onClose: () => v
         </div>
         <label className="db-field">City<input value={form.city} onChange={event => set('city', event.target.value)} placeholder="Chicago, IL" /></label>
         {type === 'fundraiser' ? <div className="db-field-row">
-          <label className="db-field">School<select value={form.schoolId} onChange={event => set('schoolId', event.target.value)}>{schools.filter(s => s.active).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-          <label className="db-field">Major<select value={form.major} onChange={event => set('major', event.target.value)}>{majors.filter(m => m.active).map(m => <option key={m.id}>{m.name}</option>)}</select></label>
+          <label className="db-field">School<Dropdown value={form.schoolId} onChange={value => set('schoolId', value)} options={schools.filter(s => s.active).map(s => ({ value: s.id, label: s.name }))} /></label>
+          <label className="db-field">Major<Dropdown value={form.major} onChange={value => set('major', value)} options={majors.filter(m => m.active).map(m => m.name)} /></label>
         </div> : null}
         {error ? <p className="gate-error" role="alert">{error}</p> : null}
         <div className="db-dialog-actions">
@@ -406,7 +402,7 @@ function SchoolEditor({ value, onClose }: { value: School | 'new' | null; onClos
         </div>
         <div className="db-field-row">
           <label className="db-field">DUNS number<input value={draft.duns} onChange={event => set('duns', event.target.value)} placeholder="00-000-0000" /></label>
-          <label className="db-field">Membership<select value={draft.membership} onChange={event => set('membership', event.target.value as Membership)}><option>Active</option><option>Trial</option><option>Expired</option></select></label>
+          <label className="db-field">Membership<Dropdown<Membership> value={draft.membership} onChange={value => set('membership', value)} options={['Active', 'Trial', 'Expired']} /></label>
         </div>
         <label className="adm-switch"><Switch checked={draft.active} onCheckedChange={on => set('active', on)} /> School is active</label>
         {error ? <p className="gate-error" role="alert">{error}</p> : null}
@@ -448,7 +444,7 @@ function SchoolAdminEditor({ value, onClose }: { value: SchoolAdmin | 'new' | nu
           <label className="db-field">Title<input value={draft.title} onChange={event => set('title', event.target.value)} placeholder="Director of Student Affairs" /></label>
         </div>
         <label className="db-field">Work email<input type="email" value={draft.email} onChange={event => set('email', event.target.value)} placeholder="name@school.edu" /></label>
-        <label className="db-field">School<select value={draft.schoolId} onChange={event => set('schoolId', event.target.value)}>{schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+        <label className="db-field">School<Dropdown value={draft.schoolId} onChange={value => set('schoolId', value)} options={schools.map(s => ({ value: s.id, label: s.name }))} /></label>
         {value === 'new' ? <label className="db-field"><span className="adm-inline-label"><KeyRound /> Temporary password</span><input value={password} onChange={event => setPassword(event.target.value)} /><small className="db-count">Sent in the invitation. They’ll be asked to change it.</small></label> : null}
         {error ? <p className="gate-error" role="alert">{error}</p> : null}
         <div className="db-dialog-actions">

@@ -5,6 +5,7 @@ import {
   Sparkles, UserPlus, Users,
 } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
+import { AppearancePanel } from '@/components/Appearance';
 import { Button } from '@/components/ui/button';
 import { PanelHead, agoText, usePhotoPicker } from '@/components/dashboard/shared';
 import { coverSrc } from '@/content/admin-data';
@@ -247,6 +248,10 @@ export function ProfileView() {
         <Button variant="destructive" className="rounded-full" onClick={signOut}><LogOut /> Sign out</Button>
       </aside>
     </div>
+    <article className="db-panel db-settings">
+      <h2>Appearance</h2>
+      <AppearancePanel />
+    </article>
     <Confirm open={resetOpen} onOpenChange={setResetOpen} title="Reset school portal data?" body="Every change you made here is replaced with the original Stanford sample data." confirmLabel="Reset" onConfirm={() => actions.resetAll()} />
   </section>;
 }

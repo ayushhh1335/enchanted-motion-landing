@@ -1,34 +1,37 @@
 import { useMemo, useState } from 'react';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import {
-  Bell, FileUser, HandHeart, Home, ImagePlus, LogOut, Menu, MessageCircle, PenSquare, Plus, PlusCircle, Search, Settings,
-  UserRound, Users, UsersRound,
+  Bell, HandHeart, Home, ImagePlus, LogOut, Menu, MessageCircle, PenSquare, Plus, PlusCircle, Search, Settings, UserPlus, Users, UsersRound,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { ThemePicker } from '@/components/Appearance';
 import { LogoMark, Wordmark } from '@/components/site-chrome';
 import { signOutDemo } from '@/lib/demo-session';
 import { ME_ID, me, people } from '@/content/dashboard-data';
 import { cn } from '@/lib/utils';
 import { Composer, Feed } from './Feed';
-import { CVisionPromo, LeftRail, ProfileCard, RightRail, SideNav, SuggestedConnections, VibeysMini } from './Rails';
+import { CVisionPromo, LeftRail, ProfileCard, RightRail, SideNav } from './Rails';
 import { StoriesRail } from './Stories';
 import { CampaignDialog, ForumDialog } from './dialogs';
-import { Avatar, ViewLink, usePhotoPicker, type View } from './shared';
+import { InviteDialog, SchoolUpdates, VibeCheck } from './home-widgets';
+import { Avatar, ViewLink, accountItems, faceTone, initials, isAccountTab, isSettingsSection, usePhotoPicker, type View } from './shared';
 import { useDashboard } from './store';
-import { CommunitiesView, MessagesView, NetworkView, NoticeList, NotificationsView, ProfileView, SavedView } from './views-social';
-import { CVisionView, CampaignsView, EventsView, SettingsView, VibeysView } from './views-growth';
+import {
+  CommunitiesView, MessagesView, NetworkView, NoticeList, NotificationsView, PersonProfileView, ProfileView, SavedView,
+} from './views-social';
+import { CampaignsView, EventsView, SettingsView, VibeysView } from './views-growth';
+import { CVisionView, PersonCVisionView } from './cvision/CVisionView';
 
 /** Views that keep the suggestions rail; the rest use its width for content. */
 const withRail: View[] = ['home', 'saved', 'notifications', 'events'];
 
-export function DashboardShell({ view, chat }: { view: View; chat?: string | undefined }) {
+export function DashboardShell({ view, chat, tab, person }: { view: View; chat?: string | undefined; tab?: string | undefined; person?: string | undefined }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
 
@@ -38,7 +41,7 @@ export function DashboardShell({ view, chat }: { view: View; chat?: string | und
     <div className={cn('db-layout', !withRail.includes(view) && 'is-wide', view === 'messages' && 'is-messages')}>
       <LeftRail active={view} />
       <main className="db-main" id="main">
-        <ActiveView view={view} chat={chat} />
+        <ActiveView view={view} chat={chat} tab={tab} person={person} />
       </main>
       {withRail.includes(view) ? <RightRail /> : null}
     </div>
@@ -64,24 +67,25 @@ export function DashboardShell({ view, chat }: { view: View; chat?: string | und
   </div>;
 }
 
-function ActiveView({ view, chat }: { view: View; chat?: string | undefined }) {
+function ActiveView({ view, chat, tab, person }: { view: View; chat?: string | undefined; tab?: string | undefined; person?: string | undefined }) {
   switch (view) {
-    case 'network': return <NetworkView />;
+    case 'network': return <NetworkView key={tab ?? 'all'} scope={tab === 'school' || tab === 'major' ? tab : undefined} />;
+    case 'account': return <SettingsView tab={isAccountTab(tab) ? tab : 'details'} />;
     case 'messages': return <MessagesView chatId={chat} />;
     case 'communities': return <CommunitiesView />;
     case 'campaigns': return <CampaignsView />;
     case 'events': return <EventsView />;
     case 'vibeys': return <VibeysView />;
-    case 'cvision': return <CVisionView />;
+    case 'cvision': return person && person !== ME_ID ? <PersonCVisionView key={person} personId={person} /> : <CVisionView />;
     case 'saved': return <SavedView />;
     case 'notifications': return <NotificationsView />;
-    case 'profile': return <ProfileView />;
-    case 'settings': return <SettingsView />;
+    case 'profile': return person && person !== ME_ID ? <PersonProfileView key={person} personId={person} /> : <ProfileView />;
+    case 'settings': return <SettingsView tab={isSettingsSection(tab) ? tab : undefined} />;
     default: return <>
       <StoriesRail />
-      <div className="db-mobile-only"><VibeysMini /></div>
+      <VibeCheck />
+      <SchoolUpdates />
       <Feed />
-      <div className="db-mobile-only"><SuggestedConnections limit={3} /></div>
     </>;
   }
 }
@@ -91,6 +95,7 @@ function TopBar({ onMenu, onCompose }: { onMenu: () => void; onCompose: () => vo
   const navigate = useNavigate();
   const [campaignOpen, setCampaignOpen] = useState(false);
   const [forumOpen, setForumOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const storyPicker = usePhotoPicker(([image]) => { if (image) actions.addStory(image, ''); });
   const unreadChats = chats.reduce((n, c) => n + c.unread, 0);
   const unreadNotices = notices.filter(n => n.unread).length;
@@ -114,6 +119,8 @@ function TopBar({ onMenu, onCompose }: { onMenu: () => void; onCompose: () => vo
           <DropdownMenuItem onSelect={storyPicker.open}><ImagePlus />Story</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setCampaignOpen(true)}><HandHeart />Campaign</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setForumOpen(true)}><UsersRound />Forum</DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => setInviteOpen(true)}><UserPlus />Invite friends</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       {storyPicker.element}
@@ -131,18 +138,20 @@ function TopBar({ onMenu, onCompose }: { onMenu: () => void; onCompose: () => vo
           <NoticeList compactMode notices={notices.slice(0, 5)} connections={connections} onAccept={id => actions.setConnection(id, 'connected')} />
         </PopoverContent>
       </Popover>
-      <span className="db-theme"><ThemeToggle /></span>
+      <span className="db-theme"><ThemePicker /></span>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button type="button" className="db-me-btn" aria-label="Account menu"><Avatar person={me} size={38} /></button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="db-menu">
-          <DropdownMenuLabel><strong>{me.name}</strong><small>{me.school}</small></DropdownMenuLabel>
+        <DropdownMenuContent align="end" className="db-menu db-me-menu">
+          <DropdownMenuItem asChild>
+            <ViewLink view="profile" className="db-me-card">
+              <Avatar person={me} size={40} />
+              <span><strong>{me.name}</strong><small>See your profile</small></span>
+            </ViewLink>
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild><ViewLink view="profile"><UserRound />Profile</ViewLink></DropdownMenuItem>
-          <DropdownMenuItem asChild><ViewLink view="cvision"><FileUser />CVision</ViewLink></DropdownMenuItem>
-          <DropdownMenuItem asChild><ViewLink view="settings"><Settings />Settings</ViewLink></DropdownMenuItem>
-          <DropdownMenuItem asChild><Link to="/"><Home />ByeUni home page</Link></DropdownMenuItem>
+          <DropdownMenuItem asChild><ViewLink view="settings"><Settings />Settings and privacy</ViewLink></DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={signOut}><LogOut />Sign out</DropdownMenuItem>
         </DropdownMenuContent>
@@ -150,6 +159,7 @@ function TopBar({ onMenu, onCompose }: { onMenu: () => void; onCompose: () => vo
     </div>
     <CampaignDialog open={campaignOpen} onOpenChange={setCampaignOpen} />
     <ForumDialog open={forumOpen} onOpenChange={setForumOpen} />
+    <InviteDialog open={inviteOpen} onOpenChange={setInviteOpen} />
   </header>;
 }
 
@@ -163,7 +173,9 @@ function GlobalSearch() {
     if (!q) return [];
     const found: { id: string; label: string; meta: string; image: string; view: View }[] = [];
     people.filter(p => p.id !== ME_ID && `${p.name} ${p.school} ${p.major}`.toLowerCase().includes(q))
-      .forEach(p => found.push({ id: p.id, label: p.name, meta: `${p.major} · ${p.school}`, image: p.photo, view: 'network' }));
+      .forEach(p => found.push({ id: p.id, label: p.name, meta: `${p.major} · ${p.school}`, image: p.photo, view: 'profile' }));
+    accountItems.filter(item => `${item.label} ${item.note}`.toLowerCase().includes(q))
+      .forEach(item => found.push({ id: item.tab, label: item.label, meta: `Settings · ${item.note}`, image: '', view: 'settings' }));
     communities.filter(c => c.name.toLowerCase().includes(q))
       .forEach(c => found.push({ id: c.id, label: c.name, meta: `Forum · ${c.members.toLocaleString('en-US')} members`, image: c.image, view: 'communities' }));
     campaigns.filter(c => c.title.toLowerCase().includes(q))
@@ -171,10 +183,10 @@ function GlobalSearch() {
     return found.slice(0, 7);
   }, [q, communities, campaigns]);
 
-  function go(view: View) {
+  function go(view: View, id: string) {
     setQuery('');
     setFocused(false);
-    navigate({ to: '/dashboard', search: { view } });
+    navigate({ to: '/dashboard', search: view === 'settings' ? { view, tab: id } : view === 'profile' ? { view, person: id } : { view } });
   }
 
   return <div className="db-search">
@@ -184,7 +196,7 @@ function GlobalSearch() {
       onChange={event => setQuery(event.target.value)}
       onFocus={() => setFocused(true)}
       onBlur={() => window.setTimeout(() => setFocused(false), 150)}
-      onKeyDown={event => { if (event.key === 'Enter' && results[0]) go(results[0].view); if (event.key === 'Escape') setQuery(''); }}
+      onKeyDown={event => { if (event.key === 'Enter' && results[0]) go(results[0].view, results[0].id); if (event.key === 'Escape') setQuery(''); }}
       placeholder="Search for students, universities, forums, campaigns…"
       aria-label="Search ByeUni"
       role="combobox"
@@ -193,8 +205,9 @@ function GlobalSearch() {
     />
     {focused && q ? <ul id="db-search-results" className="db-search-results" role="listbox">
       {results.map(result => <li key={`${result.view}-${result.id}`} role="option" aria-selected="false">
-        <button type="button" onMouseDown={event => event.preventDefault()} onClick={() => go(result.view)}>
-          <img src={result.image} alt="" /><span><strong>{result.label}</strong><small>{result.meta}</small></span>
+        <button type="button" onMouseDown={event => event.preventDefault()} onClick={() => go(result.view, result.id)}>
+          {result.image ? <img src={result.image} alt="" /> : <b className="db-initials is-square" style={{ background: faceTone(result.label) }}>{initials(result.label)}</b>}
+          <span><strong>{result.label}</strong><small>{result.meta}</small></span>
         </button>
       </li>)}
       {results.length === 0 ? <li className="db-muted">No results for “{query}”</li> : null}

@@ -1,19 +1,24 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
+import { useState } from 'react';
+import { Link, useNavigate } from '@tanstack/react-router';
 import {
-  BadgeCheck, Briefcase, CalendarPlus, Check, Copy, Flame, Gift, GraduationCap, HandHeart, LogOut, MapPin, Moon, Pencil, Plus,
-  RotateCcw, Share2, Sparkles, Star, Target, Trophy,
+  ArrowLeft, Bell, CalendarPlus, Check, ChevronRight, ExternalLink, Flame, Gift, HandHeart, Home, Info, LifeBuoy, Lock, LogOut, MapPin,
+  Palette, Pencil, Plus, RotateCcw, Share2, Sparkles, Star, Trophy, UserPlus,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { AppearancePanel } from '@/components/Appearance';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { DEMO_CREDENTIALS, signOutDemo } from '@/lib/demo-session';
+import { DEMO_CREDENTIALS, REAL_LOGIN_URL, signOutDemo } from '@/lib/demo-session';
 import { ME_ID, me, personById, rewards, vibeyRules } from '@/content/dashboard-data';
 import { cn } from '@/lib/utils';
 import { EventDate } from './Rails';
-import { CampaignDialog, DonateDialog, ProfileDialog } from './dialogs';
-import { Bar, EmptyState, agoText, usd } from './shared';
-import { profileCompletion, useDashboard, type LiveCampaign } from './store';
+import { CampaignDialog, DonateDialog, EditProfileDialog } from './dialogs';
+import { InviteDialog } from './home-widgets';
+import {
+  Bar, EmptyState, ProfileLink, ViewLink, accountItems, agoText, downloadIcs, isAccountTab, usd, type SettingsSection, type SettingsTab,
+} from './shared';
+import { AccountPanel } from './views-account';
+import { useDashboard, type LiveCampaign } from './store';
 import { ViewHeader } from './views-social';
 
 /* ---------------- Campaigns ---------------- */
@@ -62,7 +67,7 @@ export function CampaignsView() {
             <span className="db-tag">{c.category}</span>
             {c.myDonation ? <span className="db-tag is-mint"><Check /> You gave {usd(c.myDonation)}</span> : null}
             <h3>{c.title}</h3>
-            <small>{owner.name} · {owner.school}</small>
+            <small><ProfileLink personId={owner.id} className="db-name-link">{owner.name}</ProfileLink> · {owner.school}</small>
             <p>{c.story}</p>
             <div className="db-money"><b>{usd(c.raised)}</b><span>raised of {usd(c.goal)}</span></div>
             <Bar value={c.raised} max={c.goal} />
@@ -78,15 +83,6 @@ export function CampaignsView() {
 }
 
 /* ---------------- Events ---------------- */
-
-function downloadIcs(title: string, date: string, place: string) {
-  const day = date.replaceAll('-', '');
-  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//ByeUni//Demo//EN', 'BEGIN:VEVENT', `UID:${day}-${title.length}@byeuni`, `DTSTART;VALUE=DATE:${day}`, `SUMMARY:${title}`, `LOCATION:${place}`, 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
-  const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
-  const a = Object.assign(document.createElement('a'), { href: url, download: `${title.replace(/\W+/g, '-').toLowerCase()}.ics` });
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 export function EventsView() {
   const { events, actions } = useDashboard();
@@ -114,6 +110,7 @@ export function EventsView() {
 
 export function VibeysView() {
   const { vibeys, redeemed, actions } = useDashboard();
+  const [inviting, setInviting] = useState(false);
   const week = Array.from({ length: 7 }, (_, i) => i < Math.min(vibeys.streak, 7));
   return <div className="db-view">
     <ViewHeader title="My Vibeys" subtitle="Points for showing up. Redeem them for real rewards." />
@@ -135,6 +132,7 @@ export function VibeysView() {
           {vibeyRules.map(rule => <li key={rule.id}>
             <span className="db-promo-icon is-sun"><Trophy /></span>
             <div><strong>{rule.label}</strong><small>{rule.detail}</small></div>
+            {rule.id === 'r-invite' ? <Button variant="soft" size="sm" onClick={() => setInviting(true)}>Invite</Button> : null}
             <b className="db-points">+{rule.points}</b>
           </li>)}
         </ul>
@@ -169,104 +167,82 @@ export function VibeysView() {
         </article>;
       })}
     </section>
-  </div>;
-}
-
-/* ---------------- CVision ---------------- */
-
-export function CVisionView() {
-  const { profile, posts, stories } = useDashboard();
-  const [editing, setEditing] = useState(false);
-  const completion = profileCompletion(profile, stories.some(s => s.personId === ME_ID));
-  const projects = posts.filter(p => p.authorId === ME_ID && p.images.length).slice(0, 4);
-  const link = `https://byeuni.com/cVision.php?username=${me.handle}`;
-
-  return <div className="db-view db-cvision">
-    <section className="db-panel db-cv-hero">
-      <div className="db-cv-cover" />
-      <div className="db-cv-id">
-        <img src={me.photo} alt="" />
-        <div>
-          <h1>{me.name} <BadgeCheck className="db-verified" /></h1>
-          <p>{profile.headline}</p>
-          <small><GraduationCap /> {me.major} · {me.school} · {me.year}</small>
-          <small><MapPin /> {me.city}</small>
-        </div>
-        <div className="db-view-actions">
-          <Button variant="soft" size="sm" onClick={() => navigator.clipboard?.writeText(link).then(() => toast.success('CVision link copied'))}><Copy /> Copy link</Button>
-          <Button variant="ink" size="sm" onClick={() => setEditing(true)}><Pencil /> Edit</Button>
-        </div>
-      </div>
-      <div className="db-completion"><span>CVision strength</span><b>{completion}%</b></div>
-      <Bar value={completion} max={100} />
-    </section>
-
-    <div className="db-two-col">
-      <section className="db-panel">
-        <header className="db-panel-head"><h2>About</h2></header>
-        <p className="db-prose">{profile.about}</p>
-        <header className="db-panel-head"><h2>Skills</h2></header>
-        <div className="db-skills">{profile.skills.map(skill => <span key={skill}>{skill}</span>)}</div>
-        <header className="db-panel-head"><h2>Goals</h2></header>
-        <ul className="db-goals">{profile.goals.map(goal => <li key={goal}><Target /> {goal}</li>)}</ul>
-      </section>
-      <section className="db-panel">
-        <header className="db-panel-head"><h2>Experience</h2></header>
-        <ol className="db-timeline">
-          {profile.experience.map(item => <li key={item.id}>
-            <span className="db-promo-icon"><Briefcase /></span>
-            <div><strong>{item.role}</strong><small>{item.org} · {item.period}</small><p>{item.detail}</p></div>
-          </li>)}
-          <li>
-            <span className="db-promo-icon"><GraduationCap /></span>
-            <div><strong>{me.school}</strong><small>{me.major} · 2023 – 2027</small><p>Dean's List, CS 106B section leader.</p></div>
-          </li>
-        </ol>
-      </section>
-    </div>
-
-    <h2 className="db-section-title">Portfolio</h2>
-    <section className="db-grid">
-      {projects.map(post => <article key={post.id} className="db-tile"><img src={post.images[0]} alt="" /><span className="db-tile-hover">{post.kind}</span></article>)}
-    </section>
-    <ProfileDialog open={editing} onOpenChange={setEditing} />
+    <InviteDialog open={inviting} onOpenChange={setInviting} />
   </div>;
 }
 
 /* ---------------- Settings ---------------- */
 
-export function SettingsView() {
+const settingsPanels: { tab: SettingsTab; label: string; note: string; icon: typeof Bell }[] = [
+  { tab: 'appearance', label: 'Appearance', note: 'Theme, accent, and logo colors', icon: Palette },
+  { tab: 'notifications', label: 'Notifications', note: 'Likes, comments, requests, donations', icon: Bell },
+  { tab: 'privacy', label: 'Account privacy', note: 'Who can see your posts and CVision', icon: Lock },
+];
+
+const itemBody = (Icon: typeof Bell, label: string, note?: string, chevron = true) => <>
+  <Icon /><span><strong>{label}</strong>{note ? <small>{note}</small> : null}</span>{chevron ? <ChevronRight /> : null}
+</>;
+
+/** Instagram-style settings: everything account-related lives here instead of the profile menu. */
+export function SettingsView({ tab }: { tab?: SettingsSection | undefined }) {
   const { actions } = useDashboard();
   const navigate = useNavigate();
-  const [dark, setDark] = useState(false);
   const [prefs, setPrefs] = useState({ likes: true, comments: true, requests: true, campaigns: true, privateProfile: false });
-  useEffect(() => { setDark(document.documentElement.classList.contains('dark')); }, []);
-
-  function setTheme(next: boolean) {
-    setDark(next);
-    document.documentElement.classList.toggle('dark', next);
-    try { localStorage.setItem('byeuni-theme', next ? 'dark' : 'light'); } catch { /* Preference is optional. */ }
-  }
+  const [editing, setEditing] = useState(false);
+  const [inviting, setInviting] = useState(false);
   const toggle = (key: keyof typeof prefs) => (value: boolean) => setPrefs(p => ({ ...p, [key]: value }));
+  const active: SettingsSection = tab ?? 'appearance';
+  const panel = [...accountItems, ...settingsPanels].find(item => item.tab === active);
+  const sectionLink = (item: { tab: SettingsSection; label: string; note: string; icon: typeof Bell }) => <ViewLink
+    key={item.tab}
+    view="settings"
+    tab={item.tab}
+    className={cn('st-item', active === item.tab && 'is-active')}
+    aria-current={tab === item.tab ? 'page' : undefined}
+  >{itemBody(item.icon, item.label, item.note)}</ViewLink>;
 
-  return <div className="db-view">
-    <ViewHeader title="Settings" subtitle="Appearance, notifications, and your demo account." />
-    <section className="db-panel db-settings">
-      <h2>Appearance</h2>
-      <label><span><Moon /> Dark mode</span><Switch checked={dark} onCheckedChange={setTheme} /></label>
-      <h2>Notifications</h2>
-      <label><span>Likes on my posts</span><Switch checked={prefs.likes} onCheckedChange={toggle('likes')} /></label>
-      <label><span>Comments and replies</span><Switch checked={prefs.comments} onCheckedChange={toggle('comments')} /></label>
-      <label><span>Connection requests</span><Switch checked={prefs.requests} onCheckedChange={toggle('requests')} /></label>
-      <label><span>Campaign donations</span><Switch checked={prefs.campaigns} onCheckedChange={toggle('campaigns')} /></label>
-      <h2>Privacy</h2>
-      <label><span>Private profile <small>Only connections can see your posts and CVision.</small></span><Switch checked={prefs.privateProfile} onCheckedChange={toggle('privateProfile')} /></label>
-      <h2>Account</h2>
-      <p className="db-muted">Signed in as {DEMO_CREDENTIALS.email} (demo account). Manage a real account on <a className="db-link" href="https://byeuni.com/login.php">byeuni.com</a>.</p>
-      <div className="db-dialog-actions is-start">
-        <Button variant="soft" onClick={actions.resetDemo}><RotateCcw /> Reset demo data</Button>
-        <Button variant="destructive" className="rounded-full" onClick={() => { signOutDemo(); navigate({ to: '/login' }); }}><LogOut /> Sign out</Button>
-      </div>
-    </section>
+  return <div className={cn('db-view st-view', tab && 'has-panel')}>
+    <ViewHeader title="Settings and privacy" subtitle="Your account, who sees your content, and how you use ByeUni." />
+    <div className="st-layout">
+      <nav className="db-panel st-nav" aria-label="Settings">
+        <p className="ac-nav-label">Accounts Center</p>
+        {accountItems.map(sectionLink)}
+
+        <p className="ac-nav-label">How you use ByeUni</p>
+        <button type="button" className="st-item" onClick={() => setEditing(true)}>{itemBody(Pencil, 'Edit profile', 'Photo, name, headline, skills')}</button>
+        {settingsPanels.map(sectionLink)}
+
+        <p className="ac-nav-label">More info and support</p>
+        <button type="button" className="st-item" onClick={() => setInviting(true)}>{itemBody(UserPlus, 'Invite friends', 'Earn Vibeys for every friend who joins')}</button>
+        <Link to="/faqs" className="st-item">{itemBody(LifeBuoy, 'Help center')}</Link>
+        <Link to="/about" className="st-item">{itemBody(Info, 'About ByeUni')}</Link>
+        <Link to="/" className="st-item">{itemBody(Home, 'ByeUni home page')}</Link>
+
+        <p className="ac-nav-label">Login</p>
+        <a href={REAL_LOGIN_URL.student} className="st-item">{itemBody(ExternalLink, 'Manage a real account', 'Opens byeuni.com')}</a>
+        <button type="button" className="st-item" onClick={actions.resetDemo}>{itemBody(RotateCcw, 'Reset demo data', 'Restore the sample posts, people, and campaigns', false)}</button>
+        <button type="button" className="st-item is-danger" onClick={() => { signOutDemo(); navigate({ to: '/login' }); }}>{itemBody(LogOut, 'Sign out', `Signed in as ${DEMO_CREDENTIALS.email}`, false)}</button>
+      </nav>
+
+      <section className="st-panel" aria-labelledby="st-panel-title">
+        <ViewLink view="settings" className="st-back"><ArrowLeft /> Settings</ViewLink>
+        <header className="st-panel-head"><h2 id="st-panel-title">{panel?.label}</h2>{panel ? <p>{panel.note}</p> : null}</header>
+        {isAccountTab(active) ? <AccountPanel tab={active} /> : <div className="db-panel db-settings">
+          {active === 'appearance' ? <AppearancePanel /> : null}
+          {active === 'notifications' ? <>
+            <label><span>Likes on my posts</span><Switch checked={prefs.likes} onCheckedChange={toggle('likes')} /></label>
+            <label><span>Comments and replies</span><Switch checked={prefs.comments} onCheckedChange={toggle('comments')} /></label>
+            <label><span>Connection requests</span><Switch checked={prefs.requests} onCheckedChange={toggle('requests')} /></label>
+            <label><span>Campaign donations</span><Switch checked={prefs.campaigns} onCheckedChange={toggle('campaigns')} /></label>
+          </> : null}
+          {active === 'privacy' ? <>
+            <label><span>Private profile <small>Only connections can see your posts and CVision.</small></span><Switch checked={prefs.privateProfile} onCheckedChange={toggle('privateProfile')} /></label>
+            <p className="db-muted st-note">Password changes, deactivation, and account deletion are in <ViewLink view="settings" tab="security" className="db-link">Password & security</ViewLink>.</p>
+          </> : null}
+        </div>}
+      </section>
+    </div>
+    <EditProfileDialog open={editing} onOpenChange={setEditing} />
+    <InviteDialog open={inviting} onOpenChange={setInviting} />
   </div>;
 }

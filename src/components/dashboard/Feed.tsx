@@ -1,17 +1,21 @@
 import { useState, type FormEvent } from 'react';
 import {
   BadgeCheck, Bookmark, Building2, Earth, Flag, Heart, ImagePlus, Lightbulb, Link2, Lock, MessageCircle, MoreHorizontal, Repeat2,
-  Send, Share2, Trash2, Trophy, Users, X, HandHeart, Megaphone,
+  Send, Share2, Trash2, Trophy, Users, X, HandHeart,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { Dropdown, type DropdownOption } from '@/components/ui/dropdown';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ME_ID, me, personById, schoolUpdates, type Audience, type PostKind } from '@/content/dashboard-data';
+import { ME_ID, me, personById, type Audience, type PostKind } from '@/content/dashboard-data';
 import { cn } from '@/lib/utils';
 import { CampaignDialog } from './dialogs';
-import { Avatar, EmptyState, agoText, timeAgo, usePhotoPicker } from './shared';
+import { FriendsCarousel, InvitePromo, StudentOfTheDay } from './home-widgets';
+import { VibeysMini } from './Rails';
+import { Avatar, EmptyState, ProfileLink, timeAgo, usePhotoPicker } from './shared';
 import { useDashboard, type FeedPost } from './store';
 
 const kinds: { kind: PostKind; label: string; icon: typeof Trophy; tone: string }[] = [
@@ -21,6 +25,11 @@ const kinds: { kind: PostKind; label: string; icon: typeof Trophy; tone: string 
   { kind: 'Fundraiser', label: 'Fundraiser', icon: HandHeart, tone: 'rose' },
 ];
 const audienceIcon: Record<Audience, typeof Earth> = { Public: Earth, Campus: Building2, Connections: Users };
+const audiences: DropdownOption<Audience>[] = [
+  { value: 'Public', icon: Earth, description: 'Anyone on or off ByeUni' },
+  { value: 'Campus', icon: Building2, description: `Students at ${me.school}` },
+  { value: 'Connections', icon: Users, description: 'Only people you’re connected with' },
+];
 
 export function Composer({ autoFocus, onDone }: { autoFocus?: boolean; onDone?: () => void }) {
   const { actions } = useDashboard();
@@ -74,12 +83,7 @@ export function Composer({ autoFocus, onDone }: { autoFocus?: boolean; onDone?: 
       ><item.icon /><span>{item.label}</span></button>)}
     </div>
     {(ready || kind !== 'Update') ? <div className="db-composer-foot">
-      <label className="db-audience">
-        <span className="sr-only">Who can see this</span>
-        <select value={audience} onChange={event => setAudience(event.target.value as Audience)}>
-          <option>Public</option><option>Campus</option><option>Connections</option>
-        </select>
-      </label>
+      <Dropdown variant="pill" label="Who can see this" value={audience} onChange={setAudience} options={audiences} />
       <span className="db-count">{text.length}/2000</span>
       <Button variant="ink" type="submit" disabled={!ready}>Post <Send /></Button>
     </div> : null}
@@ -88,7 +92,7 @@ export function Composer({ autoFocus, onDone }: { autoFocus?: boolean; onDone?: 
   </form>;
 }
 
-export function PostCard({ post }: { post: FeedPost }) {
+export function PostCard({ post, onNavigate }: { post: FeedPost; onNavigate?: () => void }) {
   const { actions } = useDashboard();
   const author = personById(post.authorId);
   const [showComments, setShowComments] = useState(false);
@@ -113,9 +117,9 @@ export function PostCard({ post }: { post: FeedPost }) {
 
   return <article className="db-panel db-post">
     <header className="db-post-head">
-      <Avatar person={author} size={44} />
+      <ProfileLink personId={author.id} onClick={onNavigate} aria-label={`${author.name}'s profile`}><Avatar person={author} size={44} /></ProfileLink>
       <div>
-        <strong>{post.authorId === ME_ID ? 'You' : author.name} {author.verified ? <BadgeCheck className="db-verified" aria-label="Verified" /> : null}</strong>
+        <strong><ProfileLink personId={author.id} onClick={onNavigate} className="db-name-link">{post.authorId === ME_ID ? 'You' : author.name}</ProfileLink> {author.verified ? <BadgeCheck className="db-verified" aria-label="Verified" /> : null}</strong>
         <small>{author.school} · {timeAgo(post.at)} · <AudienceIcon aria-label={post.audience} /></small>
       </div>
       {kind && post.kind !== 'Photo' ? <span className={cn('db-kind', `tone-${kind.tone}`)}><kind.icon />{kind.label}</span> : null}
@@ -160,8 +164,8 @@ export function PostCard({ post }: { post: FeedPost }) {
       {post.comments.map(item => {
         const who = personById(item.authorId);
         return <div key={item.id} className="db-comment">
-          <Avatar person={who} size={32} />
-          <p><strong>{item.authorId === ME_ID ? 'You' : who.name}</strong>{item.text}<small>{timeAgo(item.at)}</small></p>
+          <ProfileLink personId={who.id} onClick={onNavigate} aria-label={`${who.name}'s profile`}><Avatar person={who} size={32} /></ProfileLink>
+          <p><strong><ProfileLink personId={who.id} onClick={onNavigate} className="db-name-link">{item.authorId === ME_ID ? 'You' : who.name}</ProfileLink></strong>{item.text}<small>{timeAgo(item.at)}</small></p>
         </div>;
       })}
       <form className="db-comment-form" onSubmit={event => {
@@ -176,6 +180,21 @@ export function PostCard({ post }: { post: FeedPost }) {
       </form>
     </div> : null}
   </article>;
+}
+
+/** Opens one post on its own, e.g. from a profile grid. Reads the live post so likes and comments update in place. */
+export function PostDialog({ postId, onClose }: { postId: string | null; onClose: () => void }) {
+  const { posts } = useDashboard();
+  const post = posts.find(item => item.id === postId);
+  if (!post) return null;
+  const author = personById(post.authorId);
+  return <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
+    <DialogContent className="db-dialog db-post-dialog">
+      <DialogTitle className="sr-only">Post by {author.name}</DialogTitle>
+      <DialogDescription className="sr-only">{post.text.slice(0, 120) || 'Photo post'}</DialogDescription>
+      <PostCard post={post} onNavigate={onClose} />
+    </DialogContent>
+  </Dialog>;
 }
 
 function likeSummary(likes: number, first?: string) {
@@ -203,18 +222,10 @@ export function Feed() {
     {shown.length === 0 ? <EmptyState icon={Lock} title="Nothing here yet" body="Posts from this group will show up here." /> : null}
     {shown.map((post, i) => <div key={post.id} className="db-feed-item">
       <PostCard post={post} />
-      {i === 1 ? <SchoolUpdates /> : null}
+      {i === 0 ? <div className="db-mobile-only"><StudentOfTheDay /></div> : null}
+      {i === 1 ? <FriendsCarousel kind="school" /> : null}
+      {i === 2 ? <div className="db-mobile-only db-feed-promos"><VibeysMini /><InvitePromo /></div> : null}
+      {i === 3 ? <FriendsCarousel kind="major" /> : null}
     </div>)}
   </div>;
-}
-
-function SchoolUpdates() {
-  return <section className="db-panel db-updates" aria-label="Recent updates from your school">
-    <header className="db-panel-head"><h2><Megaphone /> Recent updates · {me.school}</h2></header>
-    {schoolUpdates.map(update => <article key={update.id}>
-      <strong>{update.title}</strong>
-      <p>{update.body}</p>
-      <small>{agoText(update.at)}</small>
-    </article>)}
-  </section>;
 }

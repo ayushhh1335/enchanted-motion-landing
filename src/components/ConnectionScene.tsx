@@ -37,14 +37,40 @@ function Sculpture({ compact, colors }: { compact: boolean; colors: SceneColors 
   </group>;
 }
 
+/** Theme tokens can be color-mix() expressions, which three.js can't parse, so paint each one to a pixel and read back plain RGB. */
+function readSceneColors(): SceneColors {
+  const probe = document.createElement('span');
+  document.body.appendChild(probe);
+  const ctx = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+  const resolve = (token: string) => {
+    probe.style.color = `var(${token})`;
+    const computed = getComputedStyle(probe).color;
+    if (!ctx) return computed;
+    ctx.clearRect(0, 0, 1, 1);
+    ctx.fillStyle = computed;
+    ctx.fillRect(0, 0, 1, 1);
+    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+    return `rgb(${r}, ${g}, ${b})`;
+  };
+  const colors = { mint: resolve('--scene-mint'), ink: resolve('--scene-ink'), white: resolve('--scene-white'), lilac: resolve('--scene-lilac') };
+  probe.remove();
+  return colors;
+}
+
 export function ConnectionScene({ compact = false }: { compact?: boolean }) {
   const [colors, setColors] = useState<SceneColors | null>(null);
   useEffect(() => {
-    const css = getComputedStyle(document.documentElement);
-    setColors({ mint: css.getPropertyValue('--scene-mint').trim(), ink: css.getPropertyValue('--scene-ink').trim(), white: css.getPropertyValue('--scene-white').trim(), lilac: css.getPropertyValue('--scene-lilac').trim() });
+    const refresh = () => {
+      const next = readSceneColors();
+      setColors(current => current && JSON.stringify(current) === JSON.stringify(next) ? current : next);
+    };
+    refresh();
+    const observer = new MutationObserver(refresh);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style', 'data-app-theme', 'data-accent'] });
+    return () => observer.disconnect();
   }, []);
   if (!colors) return null;
-  return <Canvas dpr={[1,1.5]} camera={{ position: [0,0,10], fov: compact ? 32 : 39 }} gl={{ antialias: true, alpha: true }} aria-label="Animated mint-green connection sculpture">
+  return <Canvas dpr={[1,1.5]} camera={{ position: [0,0,10], fov: compact ? 32 : 39 }} gl={{ antialias: true, alpha: true }} aria-label="Animated connection sculpture">
     <ambientLight intensity={1} />
     <directionalLight position={[3,6,5]} intensity={2.2} />
     <Environment resolution={128}>

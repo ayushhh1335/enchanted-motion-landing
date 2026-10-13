@@ -1,17 +1,23 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
-  ArrowLeft, AtSign, BadgeCheck, Bell, Bookmark, Check, Grid3x3, HandHeart, Heart, ImagePlus, MapPin, MessageCircle, Plus, Search,
-  Send, Share2, Sparkles, UserPlus, Users, UsersRound, X,
+  ArrowLeft, AtSign, BadgeCheck, Bookmark, Check, ChevronDown, FileUser, Flag, Grid3x3, HandHeart, Heart, ImagePlus, Lock, MapPin, Menu,
+  MessageCircle, MoreHorizontal, Pencil, Plus, Search, Send, Share2, Sparkles, UserCheck, UserMinus, UserPlus, UserRound, Users,
+  UsersRound, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { ME_ID, me, people, personById, type NotificationKind } from '@/content/dashboard-data';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  ME_ID, isMajorMate, isSchoolmate, majorOf, me, people, personById, type NotificationKind, type Person,
+} from '@/content/dashboard-data';
 import { cn } from '@/lib/utils';
-import { PostCard } from './Feed';
-import { ForumDialog, ProfileDialog } from './dialogs';
-import { Avatar, Bar, EmptyState, compact, timeAgo, usd, usePhotoPicker } from './shared';
-import { useDashboard } from './store';
+import { PostCard, PostDialog } from './Feed';
+import { CampaignDetailDialog, CampaignDialog, CompleteProfileDialog, EditProfileDialog, ForumDialog } from './dialogs';
+import { Avatar, Bar, EmptyState, ProfileLink, ViewLink, compact, timeAgo, usd, usePhotoPicker } from './shared';
+import { completionOf, useDashboard, useProfileSteps, type FeedPost, type LiveCampaign } from './store';
 
 export function ViewHeader({ title, subtitle, children }: { title: string; subtitle?: string; children?: React.ReactNode }) {
   return <header className="db-view-head">
@@ -30,16 +36,24 @@ function Tabs<T extends string>({ value, onChange, items, label }: { value: T; o
 
 /* ---------------- Network ---------------- */
 
-export function NetworkView() {
+type Scope = 'all' | 'school' | 'major';
+
+export function NetworkView({ scope: initialScope }: { scope?: 'school' | 'major' | undefined }) {
   const { connections, actions, chats } = useDashboard();
-  const [tab, setTab] = useState<'requests' | 'suggestions' | 'connections'>('requests');
+  const [tab, setTab] = useState<'requests' | 'suggestions' | 'connections'>(initialScope ? 'suggestions' : 'requests');
   const [query, setQuery] = useState('');
-  const [scope, setScope] = useState<'all' | 'school'>('all');
+  const [scope, setScope] = useState<Scope>(initialScope ?? 'all');
+  const inScope = (p: Person) => scope === 'all' || (scope === 'school' ? isSchoolmate(p) : isMajorMate(p));
   const others = people.filter(person => person.id !== ME_ID);
   const match = (name: string, extra: string) => `${name} ${extra}`.toLowerCase().includes(query.trim().toLowerCase());
   const incoming = others.filter(p => connections[p.id] === 'incoming');
-  const suggestions = others.filter(p => ['none', 'pending'].includes(connections[p.id] ?? 'none'));
-  const connected = others.filter(p => connections[p.id] === 'connected' && (scope === 'all' || p.school === me.school));
+  const suggestions = others.filter(p => ['none', 'pending'].includes(connections[p.id] ?? 'none') && inScope(p));
+  const connected = others.filter(p => connections[p.id] === 'connected' && inScope(p));
+  const scopeChips = <div className="db-filter-row">
+    <button type="button" className="db-chip" aria-pressed={scope === 'all'} onClick={() => setScope('all')}>Everyone</button>
+    <button type="button" className="db-chip" aria-pressed={scope === 'school'} onClick={() => setScope('school')}>School friends · {me.school.replace(' University', '')}</button>
+    <button type="button" className="db-chip" aria-pressed={scope === 'major'} onClick={() => setScope('major')}>Major friends · {majorOf(me)}</button>
+  </div>;
 
   return <div className="db-view">
     <ViewHeader title="My Network" subtitle="Students from your campus, your major, and beyond.">
@@ -53,8 +67,8 @@ export function NetworkView() {
 
     {tab === 'requests' ? <section className="db-card-grid">
       {incoming.filter(p => match(p.name, p.school)).map(person => <article key={person.id} className="db-panel db-person-card">
-        <Avatar person={person} size={84} />
-        <strong>{person.name}</strong>
+        <ProfileLink personId={person.id} aria-label={`${person.name}'s profile`}><Avatar person={person} size={84} /></ProfileLink>
+        <strong><ProfileLink personId={person.id} className="db-name-link">{person.name}</ProfileLink></strong>
         <small>{person.major} · {person.school}</small>
         <small className="db-mutual"><Users /> {person.mutual} mutual connections</small>
         <div className="db-card-actions">
@@ -65,13 +79,14 @@ export function NetworkView() {
       {incoming.length === 0 ? <EmptyState icon={UserPlus} title="No pending requests" body="When someone wants to connect, you'll see them here." /> : null}
     </section> : null}
 
+    {tab === 'suggestions' ? scopeChips : null}
     {tab === 'suggestions' ? <section className="db-card-grid">
       {suggestions.filter(p => match(p.name, `${p.school} ${p.major}`)).map(person => {
         const pending = connections[person.id] === 'pending';
         return <article key={person.id} className="db-panel db-person-card">
           <button type="button" className="db-dismiss" aria-label={`Dismiss ${person.name}`} onClick={() => actions.setConnection(person.id, 'declined')}><X /></button>
-          <Avatar person={person} size={84} />
-          <strong>{person.name} {person.verified ? <BadgeCheck className="db-verified" /> : null}</strong>
+          <ProfileLink personId={person.id} aria-label={`${person.name}'s profile`}><Avatar person={person} size={84} /></ProfileLink>
+          <strong><ProfileLink personId={person.id} className="db-name-link">{person.name}</ProfileLink> {person.verified ? <BadgeCheck className="db-verified" /> : null}</strong>
           <small>{person.major} · {person.school}</small>
           <small className="db-mutual"><MapPin /> {person.city}</small>
           <small className="db-mutual"><Users /> {person.mutual} mutual</small>
@@ -84,16 +99,13 @@ export function NetworkView() {
     </section> : null}
 
     {tab === 'connections' ? <section>
-      <div className="db-filter-row">
-        <button type="button" className="db-chip" aria-pressed={scope === 'all'} onClick={() => setScope('all')}>All connections</button>
-        <button type="button" className="db-chip" aria-pressed={scope === 'school'} onClick={() => setScope('school')}>School friends · Stanford</button>
-      </div>
+      {scopeChips}
       <ul className="db-panel db-row-list">
         {connected.filter(p => match(p.name, p.school)).map(person => {
           const chat = chats.find(item => item.personId === person.id);
           return <li key={person.id}>
-            <Avatar person={person} size={48} />
-            <div><strong>{person.name}</strong><small>{person.major} · {person.school}</small></div>
+            <ProfileLink personId={person.id} aria-label={`${person.name}'s profile`}><Avatar person={person} size={48} /></ProfileLink>
+            <div><strong><ProfileLink personId={person.id} className="db-name-link">{person.name}</ProfileLink></strong><small>{person.major} · {person.school}</small></div>
             {chat ? <Button variant="soft" size="sm" asChild><Link to="/dashboard" search={{ view: 'messages', chat: chat.id }}><MessageCircle /> Message</Link></Button> : null}
           </li>;
         })}
@@ -144,8 +156,8 @@ export function MessagesView({ chatId }: { chatId?: string | undefined }) {
       {active && person ? <>
         <header className="db-thread-head">
           <button type="button" className="db-icon-btn db-back" aria-label="Back to conversations" onClick={() => open()}><ArrowLeft /></button>
-          <Avatar person={person} size={42} />
-          <div><strong>{person.name}</strong><small>{person.online ? 'Active now' : `${person.school}`}</small></div>
+          <ProfileLink personId={person.id} aria-label={`${person.name}'s profile`}><Avatar person={person} size={42} /></ProfileLink>
+          <div><strong><ProfileLink personId={person.id} className="db-name-link">{person.name}</ProfileLink></strong><small>{person.online ? 'Active now' : `${person.school}`}</small></div>
         </header>
         <div className="db-bubbles" ref={scroller}>
           {active.messages.map(message => <p key={message.id} className={cn('db-bubble', message.from === 'me' ? 'is-me' : 'is-them')}>
@@ -232,7 +244,7 @@ export function NoticeList({ notices, connections, onAccept, compactMode }: {
           {person ? <Avatar person={person} size={44} /> : <span className="db-promo-icon is-sun"><Sparkles /></span>}
           <i className={`kind-${notice.kind}`}><Icon /></i>
         </span>
-        <p>{person ? <strong>{person.name} </strong> : null}{notice.text}<small>{timeAgo(notice.at)}</small></p>
+        <p>{person ? <strong><ProfileLink personId={person.id} className="db-name-link">{person.name}</ProfileLink> </strong> : null}{notice.text}<small>{timeAgo(notice.at)}</small></p>
         {notice.kind === 'request' && person && connections[person.id] === 'incoming'
           ? <Button variant="ink" size="sm" onClick={() => onAccept(person.id)}>Accept</Button>
           : notice.unread ? <span className="db-dot" aria-label="Unread" /> : null}
@@ -254,15 +266,59 @@ export function SavedView() {
 
 /* ---------------- Profile (Instagram-style) ---------------- */
 
+function PostGrid({ posts, label, empty }: { posts: FeedPost[]; label: string; empty: ReactNode }) {
+  const [openId, setOpenId] = useState<string | null>(null);
+  return <section className="db-grid" aria-label={label}>
+    {posts.map(post => <button key={post.id} type="button" className="db-tile" onClick={() => setOpenId(post.id)} aria-label={`Open post: ${post.text.slice(0, 60) || 'photo'}`}>
+      {post.images[0] ? <img src={post.images[0]} alt="" loading="lazy" /> : <span className="db-tile-text">{post.text}</span>}
+      {post.images.length > 1 ? <Grid3x3 className="db-tile-multi" aria-hidden="true" /> : null}
+      <span className="db-tile-hover"><Heart /> {post.likes} <MessageCircle /> {post.comments.length}</span>
+    </button>)}
+    {posts.length === 0 ? empty : null}
+    <PostDialog postId={openId} onClose={() => setOpenId(null)} />
+  </section>;
+}
+
+function CampaignGrid({ campaigns, empty }: { campaigns: LiveCampaign[]; empty: ReactNode }) {
+  const [openId, setOpenId] = useState<string | null>(null);
+  return <section className="db-card-grid is-wide">
+    {campaigns.map(c => <article key={c.id} className="db-panel db-forum-card db-has-open">
+      <img src={c.image} alt="" />
+      <div>
+        <span className="db-tag">{c.category}</span>
+        <h3><button type="button" className="db-card-open" onClick={() => setOpenId(c.id)}>{c.title}</button></h3>
+        <Bar value={c.raised} max={c.goal} />
+        <small>{usd(c.raised)} of {usd(c.goal)} · {c.donors} donors · {c.daysLeft} days left</small>
+      </div>
+    </article>)}
+    {campaigns.length === 0 ? empty : null}
+    <CampaignDetailDialog campaignId={openId} onClose={() => setOpenId(null)} />
+  </section>;
+}
+
+/** Link-in-bio to a student's CVision portfolio; your own id opens your editor. */
+function CVisionBioLink({ personId, handle }: { personId: string; handle: string }) {
+  return <Link
+    to="/dashboard"
+    search={personId === ME_ID ? { view: 'cvision' } : { view: 'cvision', person: personId }}
+    className="db-bio-link"
+    aria-label={personId === ME_ID ? 'Open your CVision' : `Open @${handle}'s CVision`}
+  ><FileUser /> CVision portfolio</Link>;
+}
+
 export function ProfileView() {
   const { posts, stories, connections, vibeys, profile, campaigns, actions } = useDashboard();
   const [tab, setTab] = useState<'posts' | 'saved' | 'campaigns'>('posts');
   const [editing, setEditing] = useState(false);
+  const [completing, setCompleting] = useState(false);
+  const [creating, setCreating] = useState(false);
   const picker = usePhotoPicker(([image]) => { if (image) actions.addStory(image, ''); });
+  const steps = useProfileSteps();
+  const completion = completionOf(steps);
   const mine = posts.filter(post => post.authorId === ME_ID);
+  const saved = posts.filter(post => post.saved);
   const highlights = stories.filter(story => story.personId === ME_ID);
   const connected = Object.values(connections).filter(state => state === 'connected').length + 248;
-  const grid = useMemo(() => (tab === 'saved' ? posts.filter(p => p.saved) : mine), [tab, posts, mine]);
   const myCampaigns = campaigns.filter(c => c.ownerId === ME_ID);
 
   return <div className="db-view db-profile">
@@ -272,8 +328,9 @@ export function ProfileView() {
         <div className="db-profile-name">
           <h1>{me.handle} <BadgeCheck className="db-verified" /></h1>
           <div>
-            <Button variant="soft" size="sm" onClick={() => setEditing(true)}>Edit profile</Button>
+            <Button variant="soft" size="sm" onClick={() => setEditing(true)}><Pencil /> Edit profile</Button>
             <Button variant="soft" size="sm" onClick={() => navigator.clipboard?.writeText(`https://byeuni.com/cVision.php?username=${me.handle}`).then(() => toast.success('Profile link copied'))}><Share2 /> Share</Button>
+            <ViewLink view="settings" className="db-icon-btn db-profile-menu" aria-label="Settings and privacy"><Menu /></ViewLink>
           </div>
         </div>
         <dl className="db-profile-stats">
@@ -281,9 +338,20 @@ export function ProfileView() {
           <div><dd>{connected}</dd><dt>connections</dt></div>
           <div><dd>{compact(vibeys.balance)}</dd><dt>vibeys</dt></div>
         </dl>
-        <p className="db-profile-bio"><strong>{me.name}</strong>{profile.headline}<span><AtSign /> {me.school} · {me.city}</span></p>
+        <div className="db-profile-bio">
+          <strong>{me.name}</strong>
+          {profile.headline ? <p>{profile.headline}</p> : null}
+          {profile.about ? <p className="db-profile-about">{profile.about}</p> : null}
+          <span><AtSign /> {me.school} · {me.year} · {me.city}</span>
+          <CVisionBioLink personId={ME_ID} handle={me.handle} />
+        </div>
       </div>
     </section>
+
+    {completion < 100 ? <section className="db-panel db-complete-strip">
+      <div><strong>Your profile is {completion}% complete</strong><Bar value={completion} max={100} /></div>
+      <Button variant="ink" size="sm" onClick={() => setCompleting(true)}>Finish profile</Button>
+    </section> : null}
 
     <div className="db-highlights" aria-label="Story highlights">
       <button type="button" className="db-story" onClick={picker.open}><span className="db-story-add"><ImagePlus /></span><small>New</small></button>
@@ -295,19 +363,101 @@ export function ProfileView() {
       { value: 'posts', label: 'Posts' }, { value: 'saved', label: 'Saved' }, { value: 'campaigns', label: 'Campaigns' },
     ]} />
 
-    {tab === 'campaigns' ? <section className="db-card-grid is-wide">
-      {myCampaigns.map(c => <article key={c.id} className="db-panel db-forum-card">
-        <img src={c.image} alt="" />
-        <div><span className="db-tag">{c.category}</span><h3>{c.title}</h3><Bar value={c.raised} max={c.goal} /><small>{usd(c.raised)} of {usd(c.goal)} · {c.donors} donors</small></div>
-      </article>)}
-    </section> : <section className="db-grid" aria-label={tab === 'saved' ? 'Saved posts' : 'Your posts'}>
-      {grid.map(post => <article key={post.id} className="db-tile">
-        {post.images[0] ? <img src={post.images[0]} alt="" loading="lazy" /> : <p>{post.text}</p>}
-        {post.images.length > 1 ? <Grid3x3 className="db-tile-multi" aria-label="Multiple photos" /> : null}
-        <span className="db-tile-hover"><Heart /> {post.likes} <MessageCircle /> {post.comments.length}</span>
-      </article>)}
-      {grid.length === 0 ? <EmptyState icon={tab === 'saved' ? Bookmark : Bell} title="Nothing to show yet" body="Your posts will appear here." /> : null}
-    </section>}
-    <ProfileDialog open={editing} onOpenChange={setEditing} />
+    {tab === 'posts' ? <PostGrid posts={mine} label="Your posts" empty={<EmptyState icon={Grid3x3} title="No posts yet" body="Share an update, a project, or a campus moment from your home feed." />} /> : null}
+    {tab === 'saved' ? <PostGrid posts={saved} label="Saved posts" empty={<EmptyState icon={Bookmark} title="Nothing saved yet" body="Tap the bookmark on any post to keep it here." />} /> : null}
+    {tab === 'campaigns' ? <CampaignGrid campaigns={myCampaigns} empty={<EmptyState icon={HandHeart} title="No campaigns yet" body="Raise support for books, travel, equipment, or exams.">
+      <Button variant="ink" size="sm" onClick={() => setCreating(true)}><Plus /> Start a campaign</Button>
+    </EmptyState>} /> : null}
+
+    <EditProfileDialog open={editing} onOpenChange={setEditing} />
+    <CompleteProfileDialog open={completing} onOpenChange={setCompleting} />
+    <CampaignDialog open={creating} onOpenChange={setCreating} />
+  </div>;
+}
+
+/* ---------------- Someone else's profile ---------------- */
+
+export function PersonProfileView({ personId }: { personId: string }) {
+  const { posts, stories, connections, campaigns, chats, actions } = useDashboard();
+  const [tab, setTab] = useState<'posts' | 'campaigns'>('posts');
+  const person = people.find(p => p.id === personId && p.id !== ME_ID);
+
+  if (!person) return <div className="db-view">
+    <EmptyState icon={UserRound} title="Profile not found" body="This student may have left ByeUni or changed their username.">
+      <ViewLink view="network" className="db-link">Find people in My Network</ViewLink>
+    </EmptyState>
+  </div>;
+
+  const state = connections[person.id] ?? 'none';
+  const first = person.name.split(' ')[0] ?? person.name;
+  const chat = chats.find(c => c.personId === person.id);
+  const hasStory = stories.some(story => story.personId === person.id);
+  const sameSchool = person.school === me.school;
+  const all = posts.filter(post => post.authorId === person.id);
+  const visible = all.filter(post => post.audience === 'Public' || state === 'connected' || (post.audience === 'Campus' && sameSchool));
+  const hidden = all.length - visible.length;
+  const theirCampaigns = campaigns.filter(c => c.ownerId === person.id);
+  const shareLink = () => navigator.clipboard?.writeText(`https://byeuni.com/cVision.php?username=${person.handle}`)
+    .then(() => toast.success('Profile link copied'), () => toast.error('Could not copy the link'));
+
+  const connectButton = state === 'connected'
+    ? <DropdownMenu>
+      <DropdownMenuTrigger asChild><Button variant="soft" size="sm"><UserCheck /> Connected <ChevronDown /></Button></DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="db-menu">
+        <DropdownMenuItem onSelect={() => { actions.setConnection(person.id, 'none'); toast(`Removed ${first} from your connections`); }}><UserMinus />Remove connection</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+    : state === 'incoming'
+      ? <>
+        <Button variant="ink" size="sm" onClick={() => { actions.setConnection(person.id, 'connected'); toast.success(`You and ${first} are now connected`); }}><Check /> Accept request</Button>
+        <Button variant="soft" size="sm" onClick={() => actions.setConnection(person.id, 'declined')}>Decline</Button>
+      </>
+      : state === 'pending'
+        ? <Button variant="soft" size="sm" onClick={() => actions.setConnection(person.id, 'none')}><Check /> Request sent</Button>
+        : <Button variant="ink" size="sm" onClick={() => { actions.setConnection(person.id, 'pending'); toast.success(`Request sent to ${first}`); }}><UserPlus /> Connect</Button>;
+
+  return <div className="db-view db-profile">
+    <section className="db-panel db-profile-hero">
+      <Avatar person={person} size={120} ring={hasStory ? 'story' : undefined} className="db-profile-photo" />
+      <div className="db-profile-main">
+        <div className="db-profile-name">
+          <h1>{person.handle} {person.verified ? <BadgeCheck className="db-verified" aria-label="Verified" /> : null}</h1>
+          <div>
+            {connectButton}
+            {chat ? <Button variant="soft" size="sm" asChild><Link to="/dashboard" search={{ view: 'messages', chat: chat.id }}><MessageCircle /> Message</Link></Button> : null}
+            <Button variant="soft" size="sm" asChild><Link to="/dashboard" search={{ view: 'cvision', person: person.id }}><FileUser /> CVision</Link></Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild><button type="button" className="db-icon-btn" aria-label={`More options for ${person.name}`}><MoreHorizontal /></button></DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="db-menu">
+                <DropdownMenuItem onSelect={shareLink}><Share2 />Copy profile link</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => toast('Thanks. Our moderators will review this profile.')}><Flag />Report profile</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+        <dl className="db-profile-stats">
+          <div><dd>{visible.length}</dd><dt>posts</dt></div>
+          <div><dd>{person.mutual}</dd><dt>mutual</dt></div>
+          <div><dd>{theirCampaigns.length}</dd><dt>{theirCampaigns.length === 1 ? 'campaign' : 'campaigns'}</dt></div>
+        </dl>
+        <div className="db-profile-bio">
+          <strong>{person.name}</strong>
+          <p>{person.major} · {person.year}</p>
+          <span><MapPin /> {person.school} · {person.city}</span>
+          <CVisionBioLink personId={person.id} handle={person.handle} />
+          {state === 'connected' ? <small className="db-muted">You’re connected</small> : state === 'incoming' ? <small className="db-muted">{first} wants to connect with you</small> : null}
+        </div>
+      </div>
+    </section>
+
+    <Tabs label={`${person.name}'s profile sections`} value={tab} onChange={setTab} items={[
+      { value: 'posts', label: 'Posts' }, { value: 'campaigns', label: 'Campaigns' },
+    ]} />
+
+    {tab === 'posts' ? <>
+      {hidden > 0 ? <p className="db-muted db-profile-note"><Lock /> {hidden} more {hidden === 1 ? 'post is' : 'posts are'} shared with {first}’s connections only.</p> : null}
+      <PostGrid posts={visible} label={`${person.name}'s posts`} empty={<EmptyState icon={Grid3x3} title="No posts yet" body={`When ${first} shares something, it shows up here.`} />} />
+    </> : null}
+    {tab === 'campaigns' ? <CampaignGrid campaigns={theirCampaigns} empty={<EmptyState icon={HandHeart} title="No campaigns" body={`${first} isn’t fundraising right now.`} />} /> : null}
   </div>;
 }

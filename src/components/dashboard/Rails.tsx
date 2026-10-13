@@ -2,16 +2,19 @@ import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { ArrowRight, BadgeCheck, Check, ChevronRight, FileUser, Sparkles, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ME_ID, me, people, personById } from '@/content/dashboard-data';
+import { ME_ID, isMajorMate, isSchoolmate, majorOf, me, people, personById } from '@/content/dashboard-data';
 import { cn } from '@/lib/utils';
-import { DonateDialog, ProfileDialog } from './dialogs';
-import { Avatar, Bar, PanelHead, ViewLink, compact, navItems, usd, type View } from './shared';
-import { profileCompletion, useDashboard, type LiveCampaign } from './store';
+import { CompleteProfileDialog, DonateDialog, EditProfileDialog } from './dialogs';
+import { InviteDialog, InvitePromo, StudentOfTheDay } from './home-widgets';
+import { Avatar, Bar, PanelHead, ProfileLink, ViewLink, compact, navItems, usd, type View } from './shared';
+import { completionOf, useDashboard, useProfileSteps, type LiveCampaign } from './store';
 
 export function ProfileCard() {
-  const { profile, stories, posts, connections, vibeys } = useDashboard();
+  const { posts, connections, vibeys } = useDashboard();
   const [editing, setEditing] = useState(false);
-  const completion = profileCompletion(profile, stories.some(story => story.personId === ME_ID));
+  const [completing, setCompleting] = useState(false);
+  const [inviting, setInviting] = useState(false);
+  const completion = completionOf(useProfileSteps());
   const connected = Object.values(connections).filter(state => state === 'connected').length + 248;
   return <section className="db-panel db-profile-card">
     <ViewLink view="profile" className="db-profile-id">
@@ -31,8 +34,13 @@ export function ProfileCard() {
       <span>Profile completion</span><b>{completion}%</b>
     </div>
     <Bar value={completion} max={100} />
-    <button type="button" className="db-soft-btn" onClick={() => setEditing(true)}>Complete your profile <ArrowRight /></button>
-    <ProfileDialog open={editing} onOpenChange={setEditing} />
+    {completion < 100
+      ? <button type="button" className="db-soft-btn" onClick={() => setCompleting(true)}>Complete your profile <ArrowRight /></button>
+      : <button type="button" className="db-soft-btn" onClick={() => setEditing(true)}>Edit profile <ArrowRight /></button>}
+    <button type="button" className="db-invite-btn" onClick={() => setInviting(true)}><UserPlus /> Invite to join ByeUni <em>+20</em></button>
+    <EditProfileDialog open={editing} onOpenChange={setEditing} />
+    <CompleteProfileDialog open={completing} onOpenChange={setCompleting} />
+    <InviteDialog open={inviting} onOpenChange={setInviting} />
   </section>;
 }
 
@@ -73,17 +81,23 @@ export function LeftRail({ active }: { active: View }) {
 }
 
 export function SuggestedConnections({ limit = 3 }: { limit?: number }) {
-  const { connections, actions } = useDashboard();
-  const list = people.filter(person => person.id !== ME_ID && ['none', 'pending'].includes(connections[person.id] ?? 'none')).slice(0, limit);
+  const { connections, dismissed, actions } = useDashboard();
+  const [scope, setScope] = useState<'school' | 'major'>('school');
+  const list = people.filter(person => (scope === 'school' ? isSchoolmate(person) : isMajorMate(person))
+    && !dismissed.includes(person.id) && ['none', 'pending'].includes(connections[person.id] ?? 'none')).slice(0, limit);
   return <section className="db-panel">
-    <PanelHead title="Suggested connections" action={<ViewLink view="network" className="db-link">See all</ViewLink>} />
+    <PanelHead title="People you may know" action={<ViewLink view="network" tab={scope} className="db-link">See all</ViewLink>} />
+    <div className="db-seg" role="tablist" aria-label="Suggestion group">
+      <button type="button" role="tab" aria-selected={scope === 'school'} onClick={() => setScope('school')}>School friends</button>
+      <button type="button" role="tab" aria-selected={scope === 'major'} onClick={() => setScope('major')}>Major friends</button>
+    </div>
     {list.length === 0 ? <p className="db-muted">You're connected with everyone we'd suggest. Nice.</p> : null}
     <ul className="db-people-list">
       {list.map(person => {
         const pending = connections[person.id] === 'pending';
         return <li key={person.id}>
-          <Avatar person={person} size={44} />
-          <div><strong>{person.name}</strong><small>{person.major} · {person.school}</small></div>
+          <ProfileLink personId={person.id} aria-label={`${person.name}'s profile`}><Avatar person={person} size={44} /></ProfileLink>
+          <div><strong><ProfileLink personId={person.id} className="db-name-link">{person.name}</ProfileLink></strong><small>{scope === 'school' ? majorOf(person) : person.school} · {person.mutual} mutual</small></div>
           <Button variant="soft" size="sm" className={cn('db-connect', pending && 'is-pending')} onClick={() => actions.setConnection(person.id, pending ? 'none' : 'pending')}>
             {pending ? <><Check /> Pending</> : <><UserPlus /> Connect</>}
           </Button>
@@ -106,7 +120,7 @@ export function FundraisersToSupport({ limit = 2 }: { limit?: number }) {
           <img src={c.image} alt="" />
           <div>
             <strong>{c.title}</strong>
-            <small>{owner.name} · {owner.school}</small>
+            <small><ProfileLink personId={owner.id} className="db-name-link">{owner.name}</ProfileLink> · {owner.school}</small>
           </div>
           <Button variant="soft" size="sm" className="db-connect" onClick={() => setDonating(c)}>Support</Button>
           <div className="db-fund-meta">
@@ -152,7 +166,9 @@ export function VibeysMini() {
 
 export function RightRail() {
   return <aside className="db-right" aria-label="Suggestions">
+    <StudentOfTheDay />
     <VibeysMini />
+    <InvitePromo />
     <SuggestedConnections />
     <FundraisersToSupport />
     <UpcomingEvents />

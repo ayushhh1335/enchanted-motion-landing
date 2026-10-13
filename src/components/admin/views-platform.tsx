@@ -5,7 +5,9 @@ import {
   CalendarRange, Crown, Dices, Flame, Gift, ImagePlus, LogOut, Mail, PencilLine, Plus, RotateCcw, Save, Send, Sparkles, Ticket, Trash2,
   Trophy, Users,
 } from 'lucide-react';
+import { AppearancePanel } from '@/components/Appearance';
 import { Button } from '@/components/ui/button';
+import { Dropdown } from '@/components/ui/dropdown';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { usePhotoPicker } from '@/components/dashboard/shared';
@@ -424,7 +426,7 @@ function EcardEditor({ value, onClose }: { value: ECard | 'new' | null; onClose:
         </div>
         <div className="db-field-row">
           <label className="db-field">Card name<input value={draft.name} onChange={event => setDraft(d => ({ ...d, name: event.target.value }))} placeholder="You did it!" autoFocus /></label>
-          <label className="db-field">Tier<select value={draft.tier} onChange={event => setDraft(d => ({ ...d, tier: event.target.value as ECard['tier'] }))}><option>Basic</option><option>Premium</option></select></label>
+          <label className="db-field">Tier<Dropdown<ECard['tier']> value={draft.tier} onChange={tier => setDraft(d => ({ ...d, tier }))} options={['Basic', 'Premium']} /></label>
         </div>
         <div className="db-dialog-actions"><Button type="button" variant="soft" className="rounded-full" onClick={onClose}>Cancel</Button><Button type="submit" variant="ink">Save</Button></div>
       </form>
@@ -432,7 +434,7 @@ function EcardEditor({ value, onClose }: { value: ECard | 'new' | null; onClose:
   </Dialog>;
 }
 
-type SettingsTab = 'system' | 'emails' | 'account';
+type SettingsTab = 'system' | 'emails' | 'appearance' | 'account';
 
 export function SettingsView() {
   const { config, templates, actions } = useAdmin();
@@ -450,7 +452,7 @@ export function SettingsView() {
 
   return <section className="db-view">
     <PageHead title="Settings" subtitle="Platform fees, eCard prices, contact details, and system emails." />
-    <AdminTabs label="Settings" value={tab} onChange={setTab} items={[{ value: 'system', label: 'System configuration' }, { value: 'emails', label: 'Email templates' }, { value: 'account', label: 'My account' }]} />
+    <AdminTabs label="Settings" value={tab} onChange={setTab} items={[{ value: 'system', label: 'System configuration' }, { value: 'emails', label: 'Email templates' }, { value: 'appearance', label: 'Appearance' }, { value: 'account', label: 'My account' }]} />
 
     {tab === 'system' ? <div className="adm-grid-2 is-wide-first">
       <form className="db-panel db-form adm-config" onSubmit={event => { event.preventDefault(); actions.saveConfig(draft); }}>
@@ -509,6 +511,11 @@ export function SettingsView() {
           </tbody>
         </table>
       </div>
+    </article> : null}
+
+    {tab === 'appearance' ? <article className="db-panel db-settings">
+      <h2>Appearance</h2>
+      <AppearancePanel />
     </article> : null}
 
     {tab === 'account' ? <article className="db-panel db-settings">

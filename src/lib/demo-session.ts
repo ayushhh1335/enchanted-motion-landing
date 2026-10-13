@@ -19,6 +19,9 @@ export const REAL_LOGIN_URL: Record<DemoRole, string> = {
 };
 
 const SESSION_KEY = 'byeuni-demo-session';
+/** Fired on window after sign-in or sign-out so per-user preferences can reload. */
+export const SESSION_EVENT = 'byeuni-session';
+const announce = () => window.dispatchEvent(new Event(SESSION_EVENT));
 
 export type DemoSession = { email: string; role: DemoRole; signedInAt: number };
 
@@ -50,11 +53,13 @@ export function signInDemo(email: string, password: string): DemoRole | null {
   try {
     localStorage.setItem(SESSION_KEY, JSON.stringify({ email: DEMO_ACCOUNTS[role].email, role, signedInAt: Date.now() }));
   } catch { /* The session lasts for this page view without storage. */ }
+  announce();
   return role;
 }
 
 export function signOutDemo() {
   try { localStorage.removeItem(SESSION_KEY); } catch { /* Nothing stored. */ }
+  announce();
 }
 
 /** Session is read after mount so server and client markup match. */

@@ -94,8 +94,8 @@ export function OverviewView() {
             <AreaChart data={chart} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
               <defs>
                 <linearGradient id="adm-fill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#22D497" stopOpacity={0.45} />
-                  <stop offset="100%" stopColor="#22D497" stopOpacity={0} />
+                  <stop offset="0%" stopColor="var(--primary-bright)" stopOpacity={0.45} />
+                  <stop offset="100%" stopColor="var(--primary-bright)" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid vertical={false} stroke="var(--glass-line)" />
@@ -106,7 +106,7 @@ export function OverviewView() {
                 contentStyle={{ background: 'var(--glass-strong)', border: '1px solid var(--glass-border)', borderRadius: 14, backdropFilter: 'blur(16px)', fontSize: 13 }}
                 formatter={(value: number, key) => key === 'amount' ? [dollars(value), 'Donated'] : [value, 'Gifts']}
               />
-              <Area type="monotone" dataKey="amount" stroke="#0F7A56" strokeWidth={2.5} fill="url(#adm-fill)" />
+              <Area type="monotone" dataKey="amount" stroke="var(--primary)" strokeWidth={2.5} fill="url(#adm-fill)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>

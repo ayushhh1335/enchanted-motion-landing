@@ -5,6 +5,7 @@ import {
   Receipt, Trash2, Users, XCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dropdown } from '@/components/ui/dropdown';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
@@ -64,12 +65,7 @@ export function CampaignsView({ focus }: { focus?: string | undefined }) {
     <article className="db-panel adm-table-panel">
       <Toolbar>
         <SearchBox value={query} onChange={value => { setQuery(value); pager.reset(); }} placeholder="Search campaign or student" />
-        <label className="adm-select"><span className="sr-only">Category</span>
-          <select value={category} onChange={event => { setCategory(event.target.value); pager.reset(); }}>
-            <option value="all">All categories</option>
-            {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-          </select>
-        </label>
+        <Dropdown variant="pill" label="Category" value={category} onChange={value => { setCategory(value); pager.reset(); }} options={[{ value: 'all', label: 'All categories' }, ...categories.map(c => c.name)]} />
         {selection.selected.length ? <Button variant="destructive" className="rounded-full ml-auto" onClick={() => setConfirmIds(selection.selected)}><Trash2 /> Delete {selection.selected.length}</Button> : null}
       </Toolbar>
       <p className="adm-note">You can only delete campaigns with no donations.</p>
@@ -217,21 +213,17 @@ function CampaignEditor({ value, onClose }: { value: AdminCampaign | 'new' | nul
         </div>
         <div className="db-field-row">
           <label className="db-field">Fundraiser
-            <select value={draft.ownerId} onChange={event => set('ownerId', event.target.value)}>
-              {fundraisers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-            </select>
+            <Dropdown value={draft.ownerId} onChange={value => set('ownerId', value)} options={fundraisers.map(u => ({ value: u.id, label: u.name }))} />
           </label>
           <label className="db-field">Category
-            <select value={draft.category} onChange={event => set('category', event.target.value)}>
-              {categories.filter(c => c.active || c.name === draft.category).map(c => <option key={c.id}>{c.name}</option>)}
-            </select>
+            <Dropdown value={draft.category} onChange={value => set('category', value)} options={categories.filter(c => c.active || c.name === draft.category).map(c => c.name)} />
           </label>
         </div>
         <label className="db-field">Campaign title<input value={draft.title} onChange={event => set('title', event.target.value)} maxLength={90} placeholder="Fund my trip to HackMIT 2026" /></label>
         <div className="db-field-row">
           <label className="db-field">Goal (USD)<input type="number" min={1} value={draft.goal} disabled={locked} onChange={event => set('goal', Number(event.target.value))} /></label>
           <label className="db-field">Visibility
-            <select value={draft.visibility} onChange={event => set('visibility', event.target.value as AdminCampaign['visibility'])}><option>Public</option><option>Private</option></select>
+            <Dropdown<AdminCampaign['visibility']> value={draft.visibility} onChange={value => set('visibility', value)} options={['Public', 'Private']} />
           </label>
         </div>
         <div className="db-field-row">
@@ -391,11 +383,9 @@ export function PaymentsView() {
         <div className="db-filter-row adm-chips">
           {methods.map(m => <button key={m} type="button" className="db-chip" aria-pressed={method === m} onClick={() => { setMethod(m); pager.reset(); }}>{m === 'all' ? 'All methods' : m}</button>)}
         </div>
-        <label className="adm-select"><span className="sr-only">Status</span>
-          <select value={status} onChange={event => { setStatus(event.target.value); pager.reset(); }}>
-            <option value="all">Any status</option><option value="paid">Paid</option><option value="processing">Processing</option><option value="refunded">Refunded</option>
-          </select>
-        </label>
+        <Dropdown variant="pill" label="Status" value={status} onChange={value => { setStatus(value); pager.reset(); }} options={[
+          { value: 'all', label: 'Any status' }, { value: 'paid', label: 'Paid' }, { value: 'processing', label: 'Processing' }, { value: 'refunded', label: 'Refunded' },
+        ]} />
       </Toolbar>
       <div className="adm-table-wrap">
         <table className="adm-table">

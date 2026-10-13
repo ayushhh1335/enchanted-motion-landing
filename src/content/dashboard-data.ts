@@ -65,7 +65,6 @@ export type ChatMessage = { id: string; from: 'me' | 'them'; text: string; at: n
 export type Chat = { id: string; personId: string; unread: number; messages: ChatMessage[] };
 export type NotificationKind = 'like' | 'comment' | 'request' | 'accepted' | 'forum' | 'donation' | 'vibeys';
 export type Notice = { id: string; personId?: string; kind: NotificationKind; text: string; at: number };
-export type SchoolUpdate = { id: string; title: string; body: string; at: number };
 export type VibeyRule = { id: string; label: string; detail: string; points: number };
 export type Reward = { id: string; name: string; cost: number; detail: string };
 export type Experience = { id: string; role: string; org: string; period: string; detail: string };
@@ -77,6 +76,7 @@ const DAY = 24 * HOUR;
 export const ago = (ms: number) => Date.now() - ms;
 
 export const ME_ID = 'me';
+export const defaultPhoto = p1;
 
 export const me: Person = {
   id: ME_ID,
@@ -101,7 +101,25 @@ export const people: Person[] = [
   { id: 'hannah', name: 'Hannah Kim', handle: 'hannahkim', photo: p7, school: 'Stanford University', major: 'Data Science', year: "Class of '26", city: 'Palo Alto, CA', mutual: 22, verified: true },
   { id: 'amara', name: 'Amara Johnson', handle: 'amaraj', photo: p8, school: 'Howard University', major: 'Political Science', year: "Class of '27", city: 'Washington, DC', mutual: 3 },
   { id: 'sofia', name: 'Dr. Sofia Martinez', handle: 'stanfordcareers', photo: advisor, school: 'Stanford Career Education', major: 'Career Advisor', year: 'Staff', city: 'Palo Alto, CA', mutual: 48, verified: true },
+  // Classmates without a profile photo fall back to initials.
+  { id: 'leo', name: 'Leo Martin', handle: 'leobuilds', photo: '', school: 'Stanford University', major: 'B.S. Computer Science', year: "Class of '27", city: 'Stanford, CA', mutual: 16, online: true },
+  { id: 'jasmine', name: 'Jasmine Brooks', handle: 'jasminedata', photo: '', school: 'Stanford University', major: 'Data Science', year: "Class of '26", city: 'Stanford, CA', mutual: 18, verified: true },
+  { id: 'diego', name: 'Diego Hernandez', handle: 'diegofixes', photo: '', school: 'Stanford University', major: 'Mechanical Engineering', year: "Class of '26", city: 'Palo Alto, CA', mutual: 12 },
+  { id: 'aiden', name: 'Aiden Park', handle: 'aidenpark', photo: '', school: 'Stanford University', major: 'Economics', year: "Class of '27", city: 'Stanford, CA', mutual: 9 },
+  { id: 'zoe', name: 'Zoe Mitchell', handle: 'zoemitch', photo: '', school: 'Stanford University', major: 'Psychology', year: "Class of '28", city: 'Menlo Park, CA', mutual: 7, online: true },
+  { id: 'kai', name: 'Kai Nakamura', handle: 'kaidesigns', photo: '', school: 'Stanford University', major: 'Product Design', year: "Class of '28", city: 'Mountain View, CA', mutual: 5 },
+  { id: 'grace', name: 'Grace Washington', handle: 'gracew', photo: '', school: 'Stanford University', major: 'Political Science', year: "Class of '27", city: 'San Francisco, CA', mutual: 4 },
+  { id: 'isabella', name: 'Isabella Garcia', handle: 'isagarcia', photo: '', school: 'MIT', major: 'Computer Science', year: "Class of '27", city: 'Cambridge, MA', mutual: 6, verified: true },
+  { id: 'jordan', name: 'Jordan Lee', handle: 'jordanlee', photo: '', school: 'UC Berkeley', major: 'Electrical Engineering & Computer Science', year: "Class of '26", city: 'Berkeley, CA', mutual: 11 },
+  { id: 'priya', name: 'Priya Patel', handle: 'priyacodes', photo: '', school: 'Georgia Tech', major: 'Computer Science', year: "Class of '27", city: 'Atlanta, GA', mutual: 3, online: true },
+  { id: 'noah', name: 'Noah Williams', handle: 'noahw', photo: '', school: 'UIUC', major: 'Computer Science', year: "Class of '28", city: 'Urbana, IL', mutual: 2 },
+  { id: 'tyler', name: 'Tyler Nguyen', handle: 'tylern', photo: '', school: 'University of Washington', major: 'Computer Science', year: "Class of '26", city: 'Seattle, WA', mutual: 5 },
 ];
+
+/** "B.S. Computer Science" and "Computer Science" are the same major for matching. */
+export const majorOf = (person: Pick<Person, 'major'>) => person.major.replace(/^(B\.S\.|B\.A\.|M\.S\.)\s+/, '');
+export const isSchoolmate = (person: Person) => person.id !== ME_ID && person.school === me.school;
+export const isMajorMate = (person: Person) => person.id !== ME_ID && majorOf(person).includes(majorOf(me));
 
 export const personById = (id: string) => people.find(person => person.id === id) ?? me;
 
@@ -306,18 +324,147 @@ export const seedNotices: Notice[] = [
   { id: 'n7', personId: 'marcus', kind: 'accepted', text: 'accepted your connection request.', at: ago(3 * DAY) },
 ];
 
-export const schoolUpdates: SchoolUpdate[] = [
-  { id: 'u1', title: 'Winter quarter enrollment opens Nov 3', body: 'Check Axess for your enrollment time and meet your advisor before then.', at: ago(6 * HOUR) },
-  { id: 'u2', title: 'Green Library extends midterm hours', body: 'Open until 2 AM, Sunday to Thursday, through October 31.', at: ago(DAY) },
-];
-
+export const INVITES_PER_DAY = 5;
 export const vibeyRules: VibeyRule[] = [
   { id: 'r-login', label: 'Daily login', detail: '5 × your current streak', points: 5 },
   { id: 'r-post', label: 'First post of the day', detail: 'Share an update, photo, or project', points: 10 },
   { id: 'r-comment', label: 'First comment of the day', detail: 'Cheer on someone in your network', points: 5 },
+  { id: 'r-vibe', label: 'Daily Vibe Check', detail: 'Check in with yourself once a day', points: 5 },
+  { id: 'r-invite', label: 'Invite a friend to ByeUni', detail: `Per new email, up to ${INVITES_PER_DAY} a day`, points: 20 },
+  { id: 'r-invite-join', label: 'A friend joins from your invite', detail: 'Paid when they finish sign-up', points: 50 },
+  { id: 'r-kudos', label: 'Cheer the Student of the Day', detail: 'Once a day', points: 2 },
   { id: 'r-donate', label: 'Support a campaign', detail: 'Any donation to a student campaign', points: 25 },
   { id: 'r-friends', label: 'Reach 10 connections', detail: 'One-time bonus', points: 50 },
   { id: 'r-campaign', label: 'Publish your first campaign', detail: 'One-time bonus', points: 100 },
+];
+
+/* ---------- Student of the Day (select_student_cron.php picks one schoolmate a day) ---------- */
+
+export type Spotlight = { personId: string; reason: string; highlight: string };
+export const spotlights: Spotlight[] = [
+  { personId: 'jasmine', reason: 'Raised registration for 10 first-years to attend the Women in Data Science conference.', highlight: '890 Vibeys' },
+  { personId: 'diego', reason: 'Built a solar-powered bike repair station behind Escondido Village, open to everyone.', highlight: '44 backers' },
+  { personId: 'hannah', reason: 'Paper on low-power sensor fusion accepted to the NeurIPS undergraduate track.', highlight: 'NeurIPS 2026' },
+  { personId: 'chloe', reason: 'Turned an empty lot behind Lagunita into the Green Quad community garden.', highlight: '60+ volunteers' },
+  { personId: 'leo', reason: 'Taught a free intro-to-Python workshop for 40 East Palo Alto high schoolers.', highlight: '40 students taught' },
+  { personId: 'kai', reason: 'Redesigned the Bike Kitchen signage so first-years can fix flats on their own.', highlight: '230 members helped' },
+];
+export const spotlightFor = (time = Date.now()) => {
+  const day = Math.floor(time / DAY);
+  return spotlights[day % spotlights.length] ?? spotlights[0]!;
+};
+
+/* ---------- Vibe Check (gg_vibe_words: positive, neutral, negative) ---------- */
+
+export type VibeTone = 'negative' | 'neutral' | 'positive';
+export type Mood = 1 | 2 | 3 | 4 | 5;
+export const moods: { value: Mood; label: string; tone: VibeTone }[] = [
+  { value: 1, label: 'Rough', tone: 'negative' },
+  { value: 2, label: 'Low', tone: 'negative' },
+  { value: 3, label: 'Okay', tone: 'neutral' },
+  { value: 4, label: 'Good', tone: 'positive' },
+  { value: 5, label: 'Great', tone: 'positive' },
+];
+export const vibeWords: Record<VibeTone, string[]> = {
+  positive: ['Grateful', 'Energized', 'Confident', 'Calm', 'Excited', 'Proud', 'Hopeful', 'Connected', 'Focused'],
+  neutral: ['Okay', 'Tired', 'Busy', 'Curious', 'Distracted', 'Restless', 'Bored', 'Unsure'],
+  negative: ['Stressed', 'Anxious', 'Overwhelmed', 'Lonely', 'Sad', 'Burned out', 'Frustrated', 'Homesick'],
+};
+export const vibeReasons = ['Classes', 'Exams', 'Sleep', 'Friends', 'Family', 'Money', 'Health', 'Work', 'Future plans'];
+/** Anonymous campus totals for today; the visitor's own check-in is added on top. */
+export const campusPulse = {
+  responses: 1284,
+  tones: { positive: 694, neutral: 371, negative: 219 } as Record<VibeTone, number>,
+  words: { Busy: 312, Tired: 288, Excited: 201, Stressed: 196, Grateful: 174, Focused: 151, Anxious: 122, Hopeful: 110, Calm: 96, Homesick: 41 } as Record<string, number>,
+};
+export type VibeEntry = { date: string; mood: Mood; words: string[]; reasons: string[]; note: string; at: number };
+const isoDay = (offsetDays: number) => new Date(Date.now() - offsetDays * DAY).toISOString().slice(0, 10);
+export const seedVibes: VibeEntry[] = [
+  { date: isoDay(6), mood: 4, words: ['Focused'], reasons: ['Classes'], note: '', at: ago(6 * DAY) },
+  { date: isoDay(5), mood: 3, words: ['Busy', 'Tired'], reasons: ['Exams'], note: '', at: ago(5 * DAY) },
+  { date: isoDay(4), mood: 2, words: ['Stressed'], reasons: ['Exams', 'Sleep'], note: '', at: ago(4 * DAY) },
+  { date: isoDay(3), mood: 3, words: ['Okay'], reasons: ['Sleep'], note: '', at: ago(3 * DAY) },
+  { date: isoDay(2), mood: 4, words: ['Excited'], reasons: ['Friends'], note: '', at: ago(2 * DAY) },
+  { date: isoDay(1), mood: 5, words: ['Proud', 'Grateful'], reasons: ['Work'], note: '', at: ago(DAY) },
+];
+
+/* ---------- Account: profile.php, contacts, PayPal, payments ---------- */
+
+export type Account = {
+  firstName: string; lastName: string; username: string; email: string; phone: string; zip: string;
+  school: string; major: string; gradYear: string; photo: string;
+};
+export const seedAccount: Account = {
+  firstName: 'Ethan', lastName: 'Carter', username: 'ethancarter', email: 'ethan.carter@stanford.edu', phone: '(650) 555-0101', zip: '94305',
+  school: 'Stanford University', major: 'Computer Science', gradYear: '2027', photo: '',
+};
+/** Every view reads the signed-in student from `me`; the store calls this so account edits show everywhere. */
+export function applyAccount(account: Account) {
+  me.name = `${account.firstName} ${account.lastName}`.trim();
+  me.handle = account.username;
+  me.major = `B.S. ${account.major}`;
+  me.year = `Class of '${account.gradYear.slice(-2)}`;
+  me.photo = account.photo || defaultPhoto;
+}
+export const schools = ['Stanford University', 'UC Berkeley', 'UCLA', 'MIT', 'NYU', 'UT Austin', 'University of Michigan', 'Howard University', 'Georgia Tech'];
+export const majors = ['Computer Science', 'Data Science', 'Electrical Engineering', 'Mechanical Engineering', 'Product Design', 'Economics', 'Psychology', 'Biology', 'Political Science', 'Business Administration'];
+
+export type ContactSource = 'Manual' | 'CSV' | 'Google';
+export type Contact = {
+  id: string; name: string; email: string; phone: string; source: ContactSource; addedAt: number;
+  invitedAt?: number | undefined; invitedTo?: 'byeuni' | 'campaign' | undefined; joined?: boolean | undefined; note?: string | undefined;
+};
+export const seedContacts: Contact[] = [
+  { id: 'ct-mom', name: 'Margaret Carter', email: 'margaret.carter@gmail.com', phone: '(408) 555-0142', source: 'Manual', note: 'Mom', addedAt: ago(40 * DAY), invitedAt: ago(9 * DAY), invitedTo: 'campaign' },
+  { id: 'ct-dad', name: 'David Carter', email: 'dcarter@outlook.com', phone: '(408) 555-0187', source: 'Manual', note: 'Dad', addedAt: ago(40 * DAY), invitedAt: ago(9 * DAY), invitedTo: 'campaign' },
+  { id: 'ct-sam', name: 'Sam Patel', email: 'sam.patel@ucsd.edu', phone: '(858) 555-0110', source: 'Google', addedAt: ago(30 * DAY), invitedAt: ago(12 * DAY), invitedTo: 'byeuni', joined: true },
+  { id: 'ct-whitfield', name: 'Prof. Alan Whitfield', email: 'awhitfield@cs.stanford.edu', phone: '(650) 555-0163', source: 'Manual', note: 'Research mentor', addedAt: ago(25 * DAY) },
+  { id: 'ct-linda', name: 'Linda Alvarez', email: 'linda.alvarez@yahoo.com', phone: '(916) 555-0129', source: 'CSV', note: 'Aunt', addedAt: ago(20 * DAY), invitedAt: ago(9 * DAY), invitedTo: 'campaign' },
+  { id: 'ct-ramirez', name: 'Coach Daniel Ramirez', email: 'dramirez@lgshs.org', phone: '(408) 555-0175', source: 'CSV', note: 'High school coach', addedAt: ago(20 * DAY) },
+  { id: 'ct-olivia', name: 'Olivia Chen', email: 'olivia.chen@ucla.edu', phone: '(310) 555-0136', source: 'Google', addedAt: ago(14 * DAY), invitedAt: ago(3 * DAY), invitedTo: 'byeuni' },
+  { id: 'ct-rodriguez', name: 'Elena Rodriguez', email: 'erodriguez@lgshs.org', phone: '(408) 555-0151', source: 'CSV', note: 'College counselor', addedAt: ago(20 * DAY) },
+];
+export const googleContacts: Omit<Contact, 'id' | 'addedAt' | 'source'>[] = [
+  { name: 'Marcus Reyes', email: 'marcus.reyes@utexas.edu', phone: '(512) 555-0182' },
+  { name: 'Ava Thompson', email: 'ava.thompson@gmail.com', phone: '(415) 555-0119' },
+  { name: 'Ryan Kim', email: 'ryan.kim@icloud.com', phone: '(650) 555-0177' },
+];
+
+/** ByeUni keeps a site fee; PayPal's merchant charge is 2.9% + $0.30 per donation. */
+export const SITE_FEE = 0.05;
+export const feesFor = (amount: number) => {
+  const site = Math.round(amount * SITE_FEE * 100) / 100;
+  const merchant = Math.round((amount * 0.029 + 0.3) * 100) / 100;
+  return { site, merchant, net: Math.round((amount - site - merchant) * 100) / 100 };
+};
+export type PaymentStatus = 'Completed' | 'Pending' | 'Refunded';
+export type PaymentMade = { id: string; campaignId: string; campaign: string; amount: number; status: PaymentStatus; at: number };
+export type PaymentReceived = { id: string; txn: string; campaign: string; amount: number; donor: string; at: number };
+export type Autopay = { id: string; campaignId: string; campaign: string; interval: 'Monthly' | 'Weekly'; amount: number; active: boolean; next: number; createdAt: number };
+export const seedPaymentsMade: PaymentMade[] = [
+  { id: 'pm-1', campaignId: 'camp-robotics', campaign: 'Get our team to the FIRST Robotics Championship in Houston', amount: 25, status: 'Completed', at: ago(2 * DAY) },
+  { id: 'pm-2', campaignId: 'camp-mcat', campaign: 'MCAT prep books and exam fee', amount: 20, status: 'Completed', at: ago(11 * DAY) },
+  { id: 'pm-3', campaignId: 'camp-laptop', campaign: 'A laptop for my Political Science thesis', amount: 40, status: 'Completed', at: ago(18 * DAY) },
+  { id: 'pm-4', campaignId: 'camp-seoul', campaign: 'Study abroad in Seoul: housing and travel', amount: 15, status: 'Refunded', at: ago(33 * DAY) },
+];
+export const seedPaymentsReceived: PaymentReceived[] = [
+  { id: 'pr-1', txn: '8KD21937XV448203L', campaign: 'Fund my trip to HackMIT 2026', amount: 25, donor: 'Lucas Bennett', at: ago(6 * HOUR) },
+  { id: 'pr-2', txn: '3HT56021CA219544K', campaign: 'Fund my trip to HackMIT 2026', amount: 100, donor: 'Margaret Carter', at: ago(2 * DAY) },
+  { id: 'pr-3', txn: '5WN80313RB660172M', campaign: 'Fund my trip to HackMIT 2026', amount: 50, donor: 'Chloe Sullivan', at: ago(3 * DAY) },
+  { id: 'pr-4', txn: '1PL47790GD035518T', campaign: 'Fund my trip to HackMIT 2026', amount: 200, donor: 'David Carter', at: ago(5 * DAY) },
+  { id: 'pr-5', txn: '9QE12654MK807731B', campaign: 'Fund my trip to HackMIT 2026', amount: 35, donor: 'Anonymous', at: ago(6 * DAY) },
+  { id: 'pr-6', txn: '6ZR39108HS512946C', campaign: 'Fund my trip to HackMIT 2026', amount: 75, donor: 'Linda Alvarez', at: ago(8 * DAY) },
+  { id: 'pr-7', txn: '2VF73425NJ184460D', campaign: 'Fund my trip to HackMIT 2026', amount: 20, donor: 'Hannah Kim', at: ago(9 * DAY) },
+];
+export const seedAutopays: Autopay[] = [
+  { id: 'ap-1', campaignId: 'camp-mcat', campaign: 'MCAT prep books and exam fee', interval: 'Monthly', amount: 10, active: true, next: Date.now() + 9 * DAY, createdAt: ago(41 * DAY) },
+  { id: 'ap-2', campaignId: 'camp-robotics', campaign: 'Get our team to the FIRST Robotics Championship in Houston', interval: 'Weekly', amount: 5, active: true, next: Date.now() + 3 * DAY, createdAt: ago(18 * DAY) },
+];
+
+export type Invite = { id: string; email: string; at: number; joined: boolean; name?: string | undefined };
+export const seedInvites: Invite[] = [
+  { id: 'inv-sam', email: 'sam.patel@ucsd.edu', name: 'Sam Patel', at: ago(12 * DAY), joined: true },
+  { id: 'inv-olivia', email: 'olivia.chen@ucla.edu', at: ago(3 * DAY), joined: false },
 ];
 
 export const rewards: Reward[] = [

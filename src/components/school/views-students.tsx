@@ -4,6 +4,7 @@ import {
   UserCheck, UserMinus, UserPlus, UserX, Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dropdown } from '@/components/ui/dropdown';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
@@ -71,12 +72,7 @@ export function StudentsView({ focus }: { focus?: string | undefined }) {
     <article className="db-panel adm-table-panel">
       <Toolbar>
         <SearchBox value={query} onChange={value => { setQuery(value); pager.reset(); }} placeholder="Search name, email, or phone" />
-        <label className="adm-select"><span className="sr-only">Major</span>
-          <select value={major} onChange={event => { setMajor(event.target.value); pager.reset(); }}>
-            <option value="all">All majors</option>
-            {majors.map(m => <option key={m}>{m}</option>)}
-          </select>
-        </label>
+        <Dropdown variant="pill" label="Major" value={major} onChange={value => { setMajor(value); pager.reset(); }} options={[{ value: 'all', label: 'All majors' }, ...majors]} />
         {selection.selected.length ? <Button variant="destructive" className="rounded-full ml-auto" onClick={() => setRemoveIds(selection.selected)}><UserMinus /> Remove {selection.selected.length}</Button> : null}
       </Toolbar>
       <div className="adm-table-wrap">
@@ -214,7 +210,7 @@ function InviteDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
       <form className="db-form" onSubmit={event => { event.preventDefault(); save(); }}>
         <label className="db-field">Full name<input value={form.name} onChange={event => { setForm(f => ({ ...f, name: event.target.value })); setError(''); }} placeholder="Avery Johnson" autoFocus /></label>
         <label className="db-field">School email<input type="email" value={form.email} onChange={event => { setForm(f => ({ ...f, email: event.target.value })); setError(''); }} placeholder={`avery@${domain}`} /></label>
-        <label className="db-field">Major<select value={form.major} onChange={event => setForm(f => ({ ...f, major: event.target.value }))}>{majors.map(m => <option key={m}>{m}</option>)}</select></label>
+        <label className="db-field">Major<Dropdown value={form.major} onChange={value => setForm(f => ({ ...f, major: value }))} options={majors} /></label>
         {error ? <p className="gate-error" role="alert">{error}</p> : null}
         <div className="db-dialog-actions">
           <Button type="button" variant="soft" className="rounded-full" onClick={() => onOpenChange(false)}>Cancel</Button>
@@ -261,12 +257,7 @@ export function CampaignsView({ focus }: { focus?: string | undefined }) {
     <article className="db-panel adm-table-panel">
       <Toolbar>
         <SearchBox value={query} onChange={value => { setQuery(value); pager.reset(); }} placeholder="Search campaign or student" />
-        <label className="adm-select"><span className="sr-only">Category</span>
-          <select value={category} onChange={event => { setCategory(event.target.value); pager.reset(); }}>
-            <option value="all">All categories</option>
-            {categories.map(c => <option key={c}>{c}</option>)}
-          </select>
-        </label>
+        <Dropdown variant="pill" label="Category" value={category} onChange={value => { setCategory(value); pager.reset(); }} options={[{ value: 'all', label: 'All categories' }, ...categories]} />
       </Toolbar>
       <p className="adm-note">Something look wrong? Ask ByeUni to review it. Only ByeUni can unpublish a campaign or hold its payouts.</p>
       <div className="adm-table-wrap">

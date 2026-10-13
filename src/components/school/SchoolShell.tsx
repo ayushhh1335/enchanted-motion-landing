@@ -6,7 +6,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { ThemePicker } from '@/components/Appearance';
 import { LogoMark, Wordmark } from '@/components/site-chrome';
 import { coverSrc } from '@/content/admin-data';
 import { signOutDemo } from '@/lib/demo-session';
@@ -127,7 +127,7 @@ function TopBar({ onMenu }: { onMenu: () => void }) {
           </ul> : <p className="db-muted">You’re all caught up.</p>}
         </PopoverContent>
       </Popover>
-      <span className="db-theme"><ThemeToggle /></span>
+      <span className="db-theme"><ThemePicker /></span>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button type="button" className="db-me-btn" aria-label="Account menu"><Face name={`${profile.firstName} ${profile.lastName}`} size={38} /></button>

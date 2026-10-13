@@ -10,9 +10,13 @@ export function ThemeToggle() {
     const preferred = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
     setDark(preferred);
     document.documentElement.classList.toggle('dark', preferred);
+    // Other controls (dashboard settings) can flip the theme too.
+    const observer = new MutationObserver(() => setDark(document.documentElement.classList.contains('dark')));
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
   }, []);
   function toggle() {
-    const next = !dark;
+    const next = !document.documentElement.classList.contains('dark');
     setDark(next);
     document.documentElement.classList.toggle('dark', next);
     try { localStorage.setItem('byeuni-theme', next ? 'dark' : 'light'); } catch { /* Preference is optional. */ }

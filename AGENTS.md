@@ -14,3 +14,5 @@
 - Define visual tokens and reusable motion styles in the global design system; page controls use shared Button and Dialog components.
 - Keep theme preferences in browser storage and apply the root dark class after mounting; visual preferences do not need an account or backend.
 - Keep extended student-journey content in LongJourney using global design tokens; this keeps the landing route focused and preserves platform destinations.
+- The student dashboard, school-admin portal, and platform-admin console are client-rendered demos whose state lives in browser storage; the login form still posts real (non-demo) credentials to the hosted ByeUni pages.
+- School-admin actions stay scoped to the admin's own school; publishing, payouts, and platform-wide moderation remain with the platform admin.

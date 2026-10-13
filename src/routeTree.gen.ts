@@ -10,33 +10,267 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as BlogRouteImport } from './routes/blog'
+import { Route as ChatRouteImport } from './routes/chat'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as FaqsRouteImport } from './routes/faqs'
+import { Route as FundRouteImport } from './routes/fund'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as PeopleRouteImport } from './routes/people'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as RegisterRouteImport } from './routes/register'
+import { Route as SchoolRouteImport } from './routes/school'
+import { Route as SchoolAdminRouteImport } from './routes/school-admin'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as WorksRouteImport } from './routes/works'
+import { Route as BlogIndexRouteImport } from './routes/blog.index'
+import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogRoute = BlogRouteImport.update({
+  id: '/blog',
+  path: '/blog',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatRoute = ChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FaqsRoute = FaqsRouteImport.update({
+  id: '/faqs',
+  path: '/faqs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FundRoute = FundRouteImport.update({
+  id: '/fund',
+  path: '/fund',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PeopleRoute = PeopleRouteImport.update({
+  id: '/people',
+  path: '/people',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SchoolRoute = SchoolRouteImport.update({
+  id: '/school',
+  path: '/school',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SchoolAdminRoute = SchoolAdminRouteImport.update({
+  id: '/school-admin',
+  path: '/school-admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WorksRoute = WorksRouteImport.update({
+  id: '/works',
+  path: '/works',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogIndexRoute = BlogIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => BlogRoute,
+} as any)
+const BlogSlugRoute = BlogSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => BlogRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/admin': typeof AdminRoute
+  '/blog': typeof BlogRouteWithChildren
+  '/chat': typeof ChatRoute
+  '/contact': typeof ContactRoute
+  '/dashboard': typeof DashboardRoute
+  '/faqs': typeof FaqsRoute
+  '/fund': typeof FundRoute
+  '/login': typeof LoginRoute
+  '/people': typeof PeopleRoute
+  '/privacy': typeof PrivacyRoute
+  '/register': typeof RegisterRoute
+  '/school': typeof SchoolRoute
+  '/school-admin': typeof SchoolAdminRoute
+  '/terms': typeof TermsRoute
+  '/works': typeof WorksRoute
+  '/blog/$slug': typeof BlogSlugRoute
+  '/blog/': typeof BlogIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/admin': typeof AdminRoute
+  '/chat': typeof ChatRoute
+  '/contact': typeof ContactRoute
+  '/dashboard': typeof DashboardRoute
+  '/faqs': typeof FaqsRoute
+  '/fund': typeof FundRoute
+  '/login': typeof LoginRoute
+  '/people': typeof PeopleRoute
+  '/privacy': typeof PrivacyRoute
+  '/register': typeof RegisterRoute
+  '/school': typeof SchoolRoute
+  '/school-admin': typeof SchoolAdminRoute
+  '/terms': typeof TermsRoute
+  '/works': typeof WorksRoute
+  '/blog/$slug': typeof BlogSlugRoute
+  '/blog': typeof BlogIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/admin': typeof AdminRoute
+  '/blog': typeof BlogRouteWithChildren
+  '/chat': typeof ChatRoute
+  '/contact': typeof ContactRoute
+  '/dashboard': typeof DashboardRoute
+  '/faqs': typeof FaqsRoute
+  '/fund': typeof FundRoute
+  '/login': typeof LoginRoute
+  '/people': typeof PeopleRoute
+  '/privacy': typeof PrivacyRoute
+  '/register': typeof RegisterRoute
+  '/school': typeof SchoolRoute
+  '/school-admin': typeof SchoolAdminRoute
+  '/terms': typeof TermsRoute
+  '/works': typeof WorksRoute
+  '/blog/$slug': typeof BlogSlugRoute
+  '/blog/': typeof BlogIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/admin'
+    | '/blog'
+    | '/chat'
+    | '/contact'
+    | '/dashboard'
+    | '/faqs'
+    | '/fund'
+    | '/login'
+    | '/people'
+    | '/privacy'
+    | '/register'
+    | '/school'
+    | '/school-admin'
+    | '/terms'
+    | '/works'
+    | '/blog/$slug'
+    | '/blog/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/about'
+    | '/admin'
+    | '/chat'
+    | '/contact'
+    | '/dashboard'
+    | '/faqs'
+    | '/fund'
+    | '/login'
+    | '/people'
+    | '/privacy'
+    | '/register'
+    | '/school'
+    | '/school-admin'
+    | '/terms'
+    | '/works'
+    | '/blog/$slug'
+    | '/blog'
+  id:
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/admin'
+    | '/blog'
+    | '/chat'
+    | '/contact'
+    | '/dashboard'
+    | '/faqs'
+    | '/fund'
+    | '/login'
+    | '/people'
+    | '/privacy'
+    | '/register'
+    | '/school'
+    | '/school-admin'
+    | '/terms'
+    | '/works'
+    | '/blog/$slug'
+    | '/blog/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
+  AdminRoute: typeof AdminRoute
+  BlogRoute: typeof BlogRouteWithChildren
+  ChatRoute: typeof ChatRoute
+  ContactRoute: typeof ContactRoute
+  DashboardRoute: typeof DashboardRoute
+  FaqsRoute: typeof FaqsRoute
+  FundRoute: typeof FundRoute
+  LoginRoute: typeof LoginRoute
+  PeopleRoute: typeof PeopleRoute
+  PrivacyRoute: typeof PrivacyRoute
+  RegisterRoute: typeof RegisterRoute
+  SchoolRoute: typeof SchoolRoute
+  SchoolAdminRoute: typeof SchoolAdminRoute
+  TermsRoute: typeof TermsRoute
+  WorksRoute: typeof WorksRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +282,165 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog': {
+      id: '/blog'
+      path: '/blog'
+      fullPath: '/blog'
+      preLoaderRoute: typeof BlogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat': {
+      id: '/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof ChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/faqs': {
+      id: '/faqs'
+      path: '/faqs'
+      fullPath: '/faqs'
+      preLoaderRoute: typeof FaqsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fund': {
+      id: '/fund'
+      path: '/fund'
+      fullPath: '/fund'
+      preLoaderRoute: typeof FundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/people': {
+      id: '/people'
+      path: '/people'
+      fullPath: '/people'
+      preLoaderRoute: typeof PeopleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/school': {
+      id: '/school'
+      path: '/school'
+      fullPath: '/school'
+      preLoaderRoute: typeof SchoolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/school-admin': {
+      id: '/school-admin'
+      path: '/school-admin'
+      fullPath: '/school-admin'
+      preLoaderRoute: typeof SchoolAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/works': {
+      id: '/works'
+      path: '/works'
+      fullPath: '/works'
+      preLoaderRoute: typeof WorksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/': {
+      id: '/blog/'
+      path: '/'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof BlogIndexRouteImport
+      parentRoute: typeof BlogRoute
+    }
+    '/blog/$slug': {
+      id: '/blog/$slug'
+      path: '/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
+      parentRoute: typeof BlogRoute
+    }
   }
 }
 
+interface BlogRouteChildren {
+  BlogSlugRoute: typeof BlogSlugRoute
+  BlogIndexRoute: typeof BlogIndexRoute
+}
+
+const BlogRouteChildren: BlogRouteChildren = {
+  BlogSlugRoute: BlogSlugRoute,
+  BlogIndexRoute: BlogIndexRoute,
+}
+
+const BlogRouteWithChildren = BlogRoute._addFileChildren(BlogRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
+  AdminRoute: AdminRoute,
+  BlogRoute: BlogRouteWithChildren,
+  ChatRoute: ChatRoute,
+  ContactRoute: ContactRoute,
+  DashboardRoute: DashboardRoute,
+  FaqsRoute: FaqsRoute,
+  FundRoute: FundRoute,
+  LoginRoute: LoginRoute,
+  PeopleRoute: PeopleRoute,
+  PrivacyRoute: PrivacyRoute,
+  RegisterRoute: RegisterRoute,
+  SchoolRoute: SchoolRoute,
+  SchoolAdminRoute: SchoolAdminRoute,
+  TermsRoute: TermsRoute,
+  WorksRoute: WorksRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

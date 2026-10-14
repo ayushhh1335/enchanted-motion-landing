@@ -25,8 +25,9 @@ type UserLayer = {
   deletedPosts: string[];
   liked: string[];
   saved: string[];
-  reposted: string[];
   extraComments: Record<string, Comment[]>;
+  deletedComments: string[];
+  likedComments: string[];
   connections: Record<string, ConnState>;
   rsvp: Record<string, Rsvp>;
   joined: string[];
@@ -80,6 +81,8 @@ function contactError(input: ContactInput, contacts: Contact[], ignoreId?: strin
 const STORAGE_KEY = 'byeuni-dashboard-v1';
 const dayKey = (time = Date.now()) => new Date(time).toISOString().slice(0, 10);
 const uid = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+/** Sample comments get a steady like count from their id; your own start at zero. */
+const seededLikes = (comment: Comment) => comment.authorId === ME_ID ? 0 : [...comment.id].reduce((n, ch) => n + ch.charCodeAt(0), 0) % 14;
 
 function freshLayer(): UserLayer {
   return {
@@ -89,8 +92,9 @@ function freshLayer(): UserLayer {
     deletedPosts: [],
     liked: [],
     saved: [],
-    reposted: [],
     extraComments: {},
+    deletedComments: [],
+    likedComments: [],
     connections: {},
     rsvp: { 'ev-fair': 'going' },
     joined: seedJoined,
@@ -203,13 +207,16 @@ function useDashboardState() {
         ...post,
         liked,
         saved: layer.saved.includes(post.id),
-        reposted: layer.reposted.includes(post.id),
         likes: post.likes + (liked ? 1 : 0),
-        reposts: post.reposts + (layer.reposted.includes(post.id) ? 1 : 0),
-        comments: [...post.comments, ...(layer.extraComments[post.id] ?? [])],
+        comments: [...post.comments, ...(layer.extraComments[post.id] ?? [])]
+          .filter(comment => !layer.deletedComments.includes(comment.id))
+          .map(comment => {
+            const likedComment = layer.likedComments.includes(comment.id);
+            return { ...comment, liked: likedComment, likes: seededLikes(comment) + (likedComment ? 1 : 0) };
+          }),
       };
     });
-  }, [layer.myPosts, layer.deletedPosts, layer.liked, layer.saved, layer.reposted, layer.extraComments]);
+  }, [layer.myPosts, layer.deletedPosts, layer.liked, layer.saved, layer.extraComments, layer.deletedComments, layer.likedComments]);
 
   const connections = useMemo(() => ({ ...seedConnections, ...layer.connections }) as Record<string, ConnState>, [layer.connections]);
 
@@ -249,7 +256,7 @@ function useDashboardState() {
       update(prev => prev.seenStories.includes(id) ? prev : { ...prev, seenStories: [...prev.seenStories, id] });
     },
     createPost(input: NewPost) {
-      const post: Post = { id: uid('post'), authorId: ME_ID, at: Date.now(), likes: 0, likedBy: [], comments: [], reposts: 0, ...input };
+      const post: Post = { id: uid('post'), authorId: ME_ID, at: Date.now(), likes: 0, likedBy: [], comments: [], ...input };
       update(prev => ({ ...prev, myPosts: [post, ...prev.myPosts] }));
       toast.success('Posted to your feed');
       award('r-post', 'First post of the day', { daily: true });
@@ -271,15 +278,21 @@ function useDashboardState() {
       update(prev => ({ ...prev, saved: saved ? [...prev.saved.filter(item => item !== id), id] : prev.saved.filter(item => item !== id) }));
       toast(saved ? 'Saved to your collection' : 'Removed from saved');
     },
-    toggleRepost(id: string) {
-      const reposted = !latest.current.reposted.includes(id);
-      update(prev => ({ ...prev, reposted: reposted ? [...prev.reposted.filter(item => item !== id), id] : prev.reposted.filter(item => item !== id) }));
-      toast(reposted ? 'Reposted to your network' : 'Repost undone');
-    },
     addComment(postId: string, text: string) {
       const comment: Comment = { id: uid('c'), authorId: ME_ID, text, at: Date.now() };
       update(prev => ({ ...prev, extraComments: { ...prev.extraComments, [postId]: [...(prev.extraComments[postId] ?? []), comment] } }));
       award('r-comment', 'First comment of the day', { daily: true });
+    },
+    toggleCommentLike(commentId: string) {
+      update(prev => ({ ...prev, likedComments: prev.likedComments.includes(commentId) ? prev.likedComments.filter(id => id !== commentId) : [...prev.likedComments, commentId] }));
+    },
+    deleteComment(postId: string, commentId: string) {
+      update(prev => ({
+        ...prev,
+        extraComments: { ...prev.extraComments, [postId]: (prev.extraComments[postId] ?? []).filter(comment => comment.id !== commentId) },
+        deletedComments: [...prev.deletedComments, commentId],
+      }));
+      toast('Comment deleted');
     },
     setConnection(personId: string, state: ConnState) {
       update(prev => ({ ...prev, connections: { ...prev.connections, [personId]: state } }));

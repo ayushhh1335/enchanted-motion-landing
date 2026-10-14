@@ -1,259 +1,433 @@
-import { useState, type ReactNode } from 'react';
-import { ArrowUpRight, Check, Heart, MessageCircle } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Link } from '@tanstack/react-router';
+import { motion, useReducedMotion } from 'motion/react';
+import {
+  Angry, ArrowRight, BadgeCheck, BriefcaseBusiness, CalendarDays, Check, Clock, Crown, FileUser, Flame, Frown, Gift, HandHeart, Heart, HeartPulse, Laugh, Megaphone,
+  Meh, MessageCircle, MessagesSquare, Pause, Play, ShieldCheck, Smartphone, Smile, Sparkles, Star, Trophy, Users,
+} from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { BentoGrid, BentoGridItem } from '@/components/ui/bento-grid';
 import { Button } from '@/components/ui/button';
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
-import project from '@/assets/student-project.jpg';
-import future from '@/assets/student-future.jpg';
+import { HoverEffect, type HoverCardItem } from '@/components/ui/card-hover-effect';
+import { HeroHighlight, Highlight } from '@/components/ui/hero-highlight';
+import { InfiniteMovingCards, type MovingCard } from '@/components/ui/infinite-moving-cards';
+import { LampContainer } from '@/components/ui/lamp';
+import { StickyScroll, type StickyChapter } from '@/components/ui/sticky-scroll-reveal';
+import { TextGenerateEffect } from '@/components/ui/text-generate-effect';
+import { Timeline, type TimelineEntry } from '@/components/ui/timeline';
+import { LogoMark } from '@/components/Brand';
 import campus from '@/assets/campus-friends.jpg';
+import robotics from '@/assets/student-project.jpg';
+import study from '@/assets/study-hub.jpg';
+import portfolio from '@/assets/portfolio.jpg';
+import team from '@/assets/team.jpg';
+import future from '@/assets/student-future.jpg';
+import p1 from '@/assets/portrait-1.jpg';
+import p2 from '@/assets/portrait-2.jpg';
+import p3 from '@/assets/portrait-3.jpg';
+import p4 from '@/assets/portrait-4.jpg';
+import p5 from '@/assets/portrait-5.jpg';
+import p6 from '@/assets/portrait-6.jpg';
+import p7 from '@/assets/portrait-7.jpg';
+import p8 from '@/assets/portrait-8.jpg';
 
-type Links = { register: string; login: string; people: string; funds: string; demo: string; school: string };
-type PostTag = 'projects' | 'milestones' | 'campus';
+// The campus banner film from the byeuni.com hero, served from ByeUni's own uploads.
+const bannerVideo = 'https://byeuni.com/staging/wp-content/uploads/2026/04/byeuni-main-banner-video.mp4';
 
-const posts: { id: string; tag: PostTag; name: string; major: string; time: string; title: string; body: string; image?: string; likes: number; comments: number }[] = [
-  { id: 'cs', tag: 'projects', name: 'Alex Rivera', major: 'Computer science', time: 'Sample · 2h', title: 'Shipped the campus map prototype', body: 'First version of a wayfinding project for new students. Looking for someone to test the routes.', image: project, likes: 24, comments: 6 },
-  { id: 'design', tag: 'projects', name: 'Priya Shah', major: 'Design', time: 'Sample · 5h', title: 'Latest portfolio spread', body: 'A series on how students actually use the library after dark. Process notes, not just the final frames.', image: future, likes: 31, comments: 8 },
-  { id: 'intern', tag: 'milestones', name: 'Jordan Blake', major: 'Business', time: 'Sample · 1d', title: 'The internship offer landed', body: 'Writing down what I practiced so the next person in my major can use it.', likes: 48, comments: 12 },
-  { id: 'group', tag: 'campus', name: 'North Quad Lab', major: 'Campus group', time: 'Sample · 1d', title: 'Collaborative build night', body: 'Pairing programmers and designers on one student-led project this month.', image: campus, likes: 19, comments: 9 },
-  { id: 'goal', tag: 'milestones', name: 'Sam Okonkwo', major: 'Biology', time: 'Sample · 3d', title: 'Halfway through the licensing plan', body: 'Study hours logged, one practice exam done, and a campaign open for the exam fee.', likes: 15, comments: 4 },
-];
-
-const campaigns = [
-  { name: 'Maya Chen', major: 'Engineering', title: 'Help Maya bring her robotics project to life.', detail: 'Parts and an entry fee for a student robotics build.', raised: 1250, target: 2000, supporters: 18 },
-  { name: 'Alex Rivera', major: 'Computer science', title: 'Equipment for a student-led campus map.', detail: 'A laptop so the prototype can leave the lab computer.', raised: 640, target: 1100, supporters: 11 },
-  { name: 'Sam Okonkwo', major: 'Biology', title: 'Cover the fee for a licensing exam.', detail: 'One step between coursework and the next qualification.', raised: 400, target: 800, supporters: 9 },
-  { name: 'North Quad Lab', major: 'Campus group', title: 'Supplies for a campus build night.', detail: 'Shared materials for a student-led collaborative project.', raised: 900, target: 1200, supporters: 22 },
-];
-
-const people = [
-  { name: 'Alex Rivera', major: 'Computer science', focus: 'Projects', note: 'Looking for a design partner on a campus map.' },
-  { name: 'Priya Shah', major: 'Design', focus: 'Projects', note: 'Sharing portfolio work and open to critiques.' },
-  { name: 'Jordan Blake', major: 'Business', focus: 'Mentors', note: 'Happy to talk through internship interviews.' },
-  { name: 'North Quad Lab', major: 'Campus groups', focus: 'Campus groups', note: 'A build night for programmers and designers.' },
-  { name: 'Maya Chen', major: 'Engineering', focus: 'Projects', note: 'Building a robotics project with community support.' },
-  { name: 'Sam Okonkwo', major: 'Biology', focus: 'Mentors', note: 'Working toward a licensing exam, one week at a time.' },
-];
-
-const vibeyTasks = [
-  { id: 'login', label: 'Daily login', points: 1 },
-  { id: 'forum', label: 'Create one forum post', points: 20 },
-  { id: 'comment', label: 'Leave a forum comment', points: 10 },
-];
-
-function Reveal({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={className} data-reveal>{children}</div>;
+function Faces({ list, small }: { list: string[]; small?: boolean }) {
+  return <span className={small ? 'lp-faces is-sm' : 'lp-faces'}>{list.map(src => <img key={src} src={src} alt="" />)}</span>;
 }
 
-function Initials({ name }: { name: string }) {
-  const tones = ['#111111', '#3A3632', '#605F5F', '#1A1A1A'];
-  const letters = name.split(' ').map(part => part[0]).slice(0, 2).join('');
-  return <span className="initials" style={{ background: tones[name.charCodeAt(0) % tones.length] }}>{letters}</span>;
+function Progress({ value, label }: { value: number; label: string }) {
+  return <div className="bj-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={value} aria-label={label}><span style={{ width: `${value}%` }} /></div>;
 }
 
-function money(value: number) { return `$${value.toLocaleString('en-US')}`; }
+/* ---------------- Chapter pictures ---------------- */
 
-export function LongJourney({ links, onWatch }: { links: Links; onWatch: () => void }) {
-  const [feed, setFeed] = useState<'all' | PostTag>('all');
-  const [circle, setCircle] = useState('All');
-  const [done, setDone] = useState<string[]>([]);
-  const visiblePosts = posts.filter(post => feed === 'all' || post.tag === feed);
-  const visiblePeople = people.filter(person => circle === 'All' || person.focus === circle || person.major === circle);
-  const previewPoints = done.reduce((sum, id) => sum + (vibeyTasks.find(task => task.id === id)?.points ?? 0), 0);
-  const circles = ['All', 'Computer science', 'Design', 'Projects', 'Campus groups', 'Mentors'];
+function FriendsScene() {
+  return <div className="lp-scene">
+    <img className="lp-scene-photo" src={campus} alt="" />
+    <div className="lp-float is-top-left"><Faces list={[p2, p4, p5, p6]} small /><span><b>Robotics Club</b><small>214 students on your campus</small></span></div>
+    <div className="lp-float is-bottom-left"><img src={p2} alt="" /><span><b>Priya · Design</b><small>Anyone free to test the arm tonight?</small></span></div>
+    <div className="lp-float lp-reply is-bottom-right"><span><small>I’m in. Lab 3 at 7?</small></span></div>
+  </div>;
+}
 
+function FundsScene() {
+  return <div className="lp-scene is-card">
+    <article className="lp-campaign">
+      <img src={robotics} alt="" />
+      <div>
+        <span className="lp-chip"><Clock /> 12 days left</span>
+        <h4>Help Maya bring her robotics project to life</h4>
+        <p className="lp-money"><b>$1,250</b><span>raised of $2,000 · 62%</span></p>
+        <Progress value={62} label="Sample campaign, 62% funded" />
+        <p className="lp-row"><Faces list={[p1, p3, p5, p7]} small /><small>48 supporters</small></p>
+      </div>
+    </article>
+    <div className="lp-float is-top-right"><span className="lp-float-icon"><HandHeart /></span><span><b>Aunt Lena gave $50</b><small>“So proud of you, Maya!”</small></span></div>
+  </div>;
+}
+
+const activity = (length: number) => Array.from({ length }, (_, i) => ((i * 37 + (i % 7) * 11) % 10) / 10);
+const heat = activity(98);
+const heatYear = activity(182);
+
+function FuturesScene() {
+  return <div className="lp-scene is-card">
+    <article className="lp-cv">
+      <header>
+        <img src={p3} alt="" />
+        <div><h4>Maya Chen <BadgeCheck /></h4><small>Mechanical Engineering · Robotics</small></div>
+      </header>
+      <p className="lp-status"><i aria-hidden="true" /> Open to summer internships</p>
+      <div className="lp-tags"><span>ROS</span><span>CAD</span><span>Python</span><span>Embedded C</span></div>
+      <div className="lp-cv-project"><img src={portfolio} alt="" /><div><b>Autonomous sorting arm</b><small>Regional finalist · three-person team</small></div></div>
+      <div className="lp-heat" aria-hidden="true">{heat.map((level, i) => <i key={i} style={{ opacity: 0.12 + level * 0.88 }} />)}</div>
+    </article>
+  </div>;
+}
+
+const moods = [Laugh, Smile, Meh, Frown, Angry];
+
+function VibeysScene() {
+  return <div className="lp-scene is-card">
+    <article className="lp-vibeys">
+      <small>Your balance</small>
+      <strong>1,240 <span>Vibeys</span></strong>
+      <ol className="lp-streak" aria-label="7-day login streak">{Array.from({ length: 7 }, (_, i) => <li key={i}><Check /></li>)}</ol>
+      <p className="lp-streak-note"><Flame /> 7-day login streak</p>
+      <div className="lp-mood">
+        <p>How’s your vibe today?</p>
+        <div>{moods.map((Icon, i) => <span key={i} className={i === 1 ? 'is-on' : undefined}><Icon /></span>)}</div>
+      </div>
+    </article>
+    <div className="lp-float is-bottom-right"><span className="lp-float-icon is-sun"><Star /></span><span><b>+50 Vibeys</b><small>Consistent Learner badge</small></span></div>
+  </div>;
+}
+
+const chapters: StickyChapter[] = [
+  {
+    id: 'friends', tone: 'mint', eyebrow: 'Chapter 01 · Friends', title: 'Find your people in week one.',
+    description: <>
+      <p>ByeUni connects students by campus and major, so the classmates working on the same problems are one tap away. Forums keep the big questions going; private and group chats handle the late-night ones.</p>
+      <ul className="lp-ticks"><li><Check /> Networks by campus and major</li><li><Check /> Forums for clubs, courses, and causes</li><li><Check /> Private and group chats</li></ul>
+    </>,
+    action: <Link to="/people" className="lp-link">Find your people <ArrowRight /></Link>,
+    content: <FriendsScene />,
+  },
+  {
+    id: 'funds', tone: 'sun', eyebrow: 'Chapter 02 · Funds', title: 'Fund the costs college actually asks for.',
+    description: <>
+      <p>When a real educational cost shows up, students open a campaign and share it with the people who already believe in them. Gifts arrive through PayPal as they come in, not at a finish line.</p>
+      <ul className="lp-ticks"><li><Check /> Books, equipment, and travel</li><li><Check /> Internships, housing, and licensing exams</li><li><Check /> Updates that bring supporters back</li></ul>
+    </>,
+    action: <Link to="/fund" className="lp-link">Explore campaigns <ArrowRight /></Link>,
+    content: <FundsScene />,
+  },
+  {
+    id: 'futures', tone: 'sky', eyebrow: 'Chapter 03 · Futures', title: 'A living page instead of a static résumé.',
+    description: <>
+      <p>CVision turns projects, skills, and milestones into a portfolio page the student owns. Themes, layouts, and coding activity make it personal, and it keeps growing from the first semester to the first job.</p>
+      <ul className="lp-ticks"><li><Check /> Projects, skills, and experience</li><li><Check /> GitHub and LeetCode activity</li><li><Check /> One link for every application</li></ul>
+    </>,
+    action: <Link to="/register" className="lp-link">Start your CVision <ArrowRight /></Link>,
+    content: <FuturesScene />,
+  },
+  {
+    id: 'vibeys', tone: 'rose', eyebrow: 'Chapter 04 · Showing up', title: 'Small steps, rewarded.',
+    description: <>
+      <p>Vibeys are points for participation: logging in, posting, commenting, adding friends, and supporting campaigns. Students redeem them for rewards. A 20-second Vibe Check shows how campus is really feeling, anonymously.</p>
+      <ul className="lp-ticks"><li><Check /> +50 for joining, +20 for a forum post</li><li><Check /> Streak bonuses for showing up</li><li><Check /> An anonymous daily campus pulse</li></ul>
+    </>,
+    action: <Link to="/register" className="lp-link">Start earning Vibeys <ArrowRight /></Link>,
+    content: <VibeysScene />,
+  },
+];
+
+/* ---------------- One year, month by month ---------------- */
+
+const year: TimelineEntry[] = [
+  {
+    id: 'sep', title: 'September', caption: 'Week one',
+    content: <>
+      <h4 className="lp-tl-title">Arrives knowing no one.</h4>
+      <p>Maya signs up with her campus and major. Before her first lab, ByeUni has already introduced her to classmates in Mechanical Engineering and the Robotics Club forum.</p>
+      <div className="lp-tl-media"><img src={campus} alt="Students talking together on a campus lawn" /><img src={team} alt="A student team working around a table" /></div>
+    </>,
+  },
+  {
+    id: 'oct', title: 'October', caption: 'Week six',
+    content: <>
+      <h4 className="lp-tl-title">Finds her team.</h4>
+      <p>A forum post asking for a build partner gets 32 replies. Three of them become her team, and the group chat never really sleeps.</p>
+      <article className="lp-tl-post">
+        <header><img src={p1} alt="" /><span><b>Arjun Mehta</b><small>Computer Science · replied in Robotics Club</small></span></header>
+        <p>Count me in. I can write the vision code if someone owns the gripper.</p>
+        <footer><span><Heart /> 41</span><span><MessageCircle /> 32 replies</span></footer>
+      </article>
+    </>,
+  },
+  {
+    id: 'nov', title: 'November', caption: 'The parts list',
+    content: <>
+      <h4 className="lp-tl-title">Gets backed.</h4>
+      <p>The parts cost more than a student budget. Her campaign passes 60% in ten days, with family, classmates, and a few alumni chipping in.</p>
+      <div className="lp-tl-hero">
+        <img src={robotics} alt="Students building a robotics project in a makerspace" />
+        <div className="lp-tl-fund"><p><b>$1,250</b><small>of $2,000 for the robotics kit</small></p><Progress value={62} label="Sample campaign, 62% funded" /></div>
+      </div>
+    </>,
+  },
+  {
+    id: 'feb', title: 'February', caption: 'Competition season',
+    content: <>
+      <h4 className="lp-tl-title">Shows the work.</h4>
+      <p>The build log, the code, and the competition video go on her CVision. One link now does what her résumé never could.</p>
+      <div className="lp-tl-media"><img src={portfolio} alt="A student portfolio open on a laptop" /><img src={study} alt="Students studying together in a library" /></div>
+    </>,
+  },
+  {
+    id: 'apr', title: 'April', caption: 'The payoff',
+    content: <>
+      <h4 className="lp-tl-title">Gets noticed.</h4>
+      <p>She’s named Student of the Day, sends her CVision link with an application, and the internship offer arrives before finals.</p>
+      <div className="lp-tl-hero">
+        <img src={future} alt="Students laughing together around their laptops" />
+        <span className="lp-tl-badge"><Crown /> Student of the Day · Internship offer</span>
+      </div>
+    </>,
+  },
+];
+
+/* ---------------- Platform tiles ---------------- */
+
+function ForumsArt() {
+  return <div className="lp-art lp-art-forums">
+    {[['Robotics Club', '214 members', p4], ['CS 106B study group', '58 members', p6], ['Sustainable Campus', '1.2k members', p8]].map(([name, meta, src]) => <p key={name}>
+      <img src={src} alt="" /><span><b>{name}</b><small>{meta}</small></span><em>Join</em>
+    </p>)}
+    <span className="lp-art-chat"><img src={p5} alt="" /> Notes from today’s lecture are up!</span>
+  </div>;
+}
+
+function VibeArt() {
+  return <div className="lp-art lp-art-vibe">
+    <div className="lp-art-moods">{moods.map((Icon, i) => <span key={i} className={i === 0 ? 'is-on' : undefined}><Icon /></span>)}</div>
+    <div className="lp-art-pulse"><i style={{ width: '58%' }} /><i style={{ width: '29%' }} /><i style={{ width: '13%' }} /></div>
+    <small>Campus pulse · anonymous</small>
+  </div>;
+}
+
+function SotdArt() {
+  return <div className="lp-art lp-art-sotd">
+    <span className="lp-art-ring"><img src={p7} alt="" /><Crown /></span>
+    <p><b>Leah Park</b><small>Biology · organized the campus blood drive</small></p>
+    <em><Sparkles /> 23 cheers</em>
+  </div>;
+}
+
+function UpdatesArt() {
+  return <div className="lp-art lp-art-updates">
+    {[['Oct', '18', 'Career fair', 'Main quad · 10am'], ['Oct', '22', 'Robotics showcase', 'Engineering hall']].map(([month, day, title, place]) => <p key={title}>
+      <span><small>{month}</small><b>{day}</b></span><span><b>{title}</b><small>{place}</small></span>
+    </p>)}
+  </div>;
+}
+
+function RewardsArt() {
+  return <div className="lp-art lp-art-rewards">
+    <span>+1 <small>daily login</small></span>
+    <span>+20 <small>forum post</small></span>
+    <span>+50 <small>first campaign</small></span>
+  </div>;
+}
+
+function AppsArt() {
+  return <div className="lp-art lp-art-apps">
+    <span className="lp-art-phone"><LogoMark /><i /><i /><i /></span>
+    <span className="lp-art-phone is-back"><i /><i /><i /></span>
+  </div>;
+}
+
+function CvArt() {
+  return <div className="lp-art lp-art-cv">
+    <div className="lp-art-cv-card"><img src={p4} alt="" /><span><b>Jordan Blake</b><small>Business · Product strategy</small></span></div>
+    <div className="lp-heat is-wide" aria-hidden="true">{heatYear.map((level, i) => <i key={i} style={{ opacity: 0.12 + level * 0.88 }} />)}</div>
+  </div>;
+}
+
+/* ---------------- Voices ---------------- */
+
+const voices: MovingCard[][] = [
+  [
+    { id: 'kevin', name: 'Kevin Tran', title: 'Computer Science', quote: 'Finally deployed my portfolio website and loved all the feedback from this community.', avatar: <img src={p3} alt="" /> },
+    { id: 'sara', name: 'Sara Khan', title: 'Exchange semester in Seoul', quote: 'Exploring Seoul during my exchange semester. My campaign covered the flights, and this experience has been incredible.', avatar: <img src={p5} alt="" /> },
+    { id: 'rohit', name: 'Rohit Verma', title: 'Environmental Studies', quote: 'Our college team is building a sustainable campus initiative. We found four volunteers in the forum in one afternoon.', avatar: <img src={p6} alt="" /> },
+    { id: 'ananya', name: 'Ananya Desai', title: 'Design', quote: 'Super excited to share that my CVision landed me my first design internship offer!', avatar: <img src={p2} alt="" /> },
+  ],
+  [
+    { id: 'arjun', name: 'Arjun Mehta', title: 'Computer Science', quote: 'Just finished my first full-stack project, a study buddy platform for college students. The feedback here is unreal.', avatar: <img src={p1} alt="" /> },
+    { id: 'jordan', name: 'Jordan Blake', title: 'Business', quote: 'I wrote up how I prepped for my internship interviews so the next person in my major can use it.', avatar: <img src={p4} alt="" /> },
+    { id: 'sam', name: 'Sam Okonkwo', title: 'Biology', quote: 'Halfway through my licensing plan: study hours logged, one practice exam done, and a campaign open for the exam fee.', avatar: <img src={p8} alt="" /> },
+    { id: 'priya', name: 'Priya Sharma', title: 'Design', quote: 'Shared my UI case study for a mental wellness app and got thoughtful critiques from three design majors within an hour.', avatar: <img src={p7} alt="" /> },
+  ],
+];
+
+/* ---------------- For universities ---------------- */
+
+const schoolBenefits: HoverCardItem[] = [
+  { id: 'belong', icon: <Users />, title: 'Belonging from week one', description: 'Students connect by campus and major before the first lecture, so nobody spends the semester alone.' },
+  { id: 'pulse', icon: <HeartPulse />, title: 'An anonymous campus pulse', description: 'Vibe Check totals show how students are feeling, without ever revealing who said what.' },
+  { id: 'updates', icon: <Megaphone />, title: 'Announcements students see', description: 'School updates and events land in the student feed, with one tap to add them to a calendar.' },
+  { id: 'career', icon: <BriefcaseBusiness />, title: 'Career readiness, built in', description: 'Every student can keep a CVision of projects and skills that is ready for internships and first jobs.' },
+  { id: 'recognition', icon: <Trophy />, title: 'Recognition that motivates', description: 'Student of the Day and Vibeys reward participation and progress, not only grades.' },
+  { id: 'scoped', icon: <ShieldCheck />, title: 'A portal scoped to your school', description: 'School admins manage their own students and updates; payouts and platform-wide moderation stay with ByeUni.' },
+];
+
+const faqs: [string, string][] = [
+  ['What is ByeUni?', 'ByeUni brings student connection, educational fundraising, and a dynamic portfolio together. Find peers, share your journey, and build toward your future.'],
+  ['How can I find people on my campus?', 'Explore the ByeUni community to connect with students by campus and major. Forums and private or group chats keep conversations going.'],
+  ['What can a campaign support?', 'Campaigns focus on educational goals such as textbooks, equipment, travel, internships, housing, or licensing exams. Visit the campaign list for current campaigns.'],
+  ['What makes CVision different from a résumé?', 'CVision is a dynamic, student-owned webpage that brings your experiences, skills, and accomplishments together. It grows as you add new chapters to your student journey.'],
+  ['What are Vibeys?', 'Vibeys are ByeUni’s participation rewards. Students earn points by engaging with their community and redeem them for rewards. Points are not cash.'],
+  ['How do schools use ByeUni?', 'Colleges use ByeUni to connect students by campus and major, share updates, and support belonging and career readiness. School admins can request a demo from the School Admins page.'],
+];
+
+/** Muted, looping campus film. Autoplays unless the visitor prefers reduced motion; always pausable. */
+function CampusFilm({ onWatch }: { onWatch: () => void }) {
+  const video = useRef<HTMLVideoElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const reduce = useReducedMotion();
+  const toggle = () => {
+    const v = video.current;
+    if (!v) return;
+    if (v.paused) void v.play();
+    else v.pause();
+  };
+  return <section className="bj-film" aria-label="Students arriving on campus">
+    <div className="bj-film-frame">
+      <video ref={video} className="bj-film-video" src={bannerVideo} autoPlay={!reduce} muted loop playsInline preload="metadata" aria-hidden="true" onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} />
+      <button type="button" className="bj-film-toggle" onClick={toggle} aria-label={playing ? 'Pause background video' : 'Play background video'}>{playing ? <Pause size={16} /> : <Play size={16} />}</button>
+      <div className="bj-film-copy" data-reveal>
+        <p className="eyebrow">Friends · Funds · Futures</p>
+        <h2>Your campus story<br /><em>starts here.</em></h2>
+        <Button variant="soft" size="hero" onClick={onWatch}><Play size={14} /> Watch the introduction</Button>
+      </div>
+    </div>
+  </section>;
+}
+
+/** The landing page's story, after the hero: why ByeUni exists, the four chapters, one student's year, and where to go next. */
+export function LongJourney({ onWatch }: { onWatch: () => void }) {
   return <>
-    <section id="feed" className="site-wrap story-section" aria-labelledby="feed-title">
-      <Reveal className="story-intro">
-        <p className="eyebrow">Your campus, beyond the classroom</p>
-        <h2 id="feed-title" className="section-title">Alex finds people who <em>get the project.</em></h2>
-        <p>Same campus. Shared interests. A place to post the work, ask the class question, and keep the conversation going in forums or chats.</p>
-      </Reveal>
-      <div className="filter-row" role="toolbar" aria-label="Sample feed filters">
-        {([['all', 'All'], ['projects', 'Projects'], ['milestones', 'Milestones'], ['campus', 'Campus']] as const).map(([id, label]) =>
-          <button key={id} type="button" className="filter-chip" aria-pressed={feed === id} onClick={() => setFeed(id)}>{label}</button>)}
-      </div>
-      <p className="sample-note">Sample posts for the story. These students and counts are not live ByeUni activity.</p>
-      <div className="feed-grid" data-stagger>
-        {visiblePosts.map(post => <article key={post.id} className="feed-card">
-          <header><Initials name={post.name} /><div><strong>{post.name}</strong><small>{post.major} · {post.time}</small></div></header>
-          <h3>{post.title}</h3>
-          <p>{post.body}</p>
-          {post.image ? <img src={post.image} alt="" /> : null}
-          <footer><span><Heart size={14} /> {post.likes} likes</span><span><MessageCircle size={14} /> {post.comments} comments</span></footer>
-        </article>)}
-      </div>
-      <Button variant="ink" size="hero" asChild className="story-cta"><a href={links.people} target="_blank" rel="noreferrer">Find your people <ArrowUpRight /></a></Button>
+    <section id="why" className="lp-opener" aria-labelledby="lp-why-title">
+      <HeroHighlight containerClassName="lp-opener-field" className="site-wrap lp-opener-body">
+        <p className="lp-eyebrow">Why ByeUni exists</p>
+        <h2 id="lp-why-title">Every fall, students arrive on campus knowing almost <Highlight>no one.</Highlight></h2>
+        <TextGenerateEffect
+          className="lp-opener-text"
+          delay={0.045}
+          words="They’re juggling classes, rent, and a résumé that doesn’t show what they can do. The people who would gladly help can’t see what they need. ByeUni gives every student one place to be *found,* *backed,* and *seen.*"
+        />
+        <ol className="lp-pillars">
+          <li><a href="#friends"><span>01</span><Users /><strong>Friends</strong><small>Your campus and major, in one network.</small></a></li>
+          <li><a href="#funds"><span>02</span><HandHeart /><strong>Funds</strong><small>Campaigns for the costs college actually asks for.</small></a></li>
+          <li><a href="#futures"><span>03</span><FileUser /><strong>Futures</strong><small>A CVision that keeps growing after the semester.</small></a></li>
+        </ol>
+      </HeroHighlight>
     </section>
 
-    <section id="fundraising" className="campaign-band" aria-labelledby="fund-title">
-      <div className="site-wrap story-section">
-        <Reveal className="story-intro">
-          <p className="eyebrow">Big dreams need a support system</p>
-          <h2 id="fund-title" className="section-title">Maya’s robotics build needs a community, not just a budget.</h2>
-          <p>Campaigns on ByeUni are for educational goals: books, travel and internships, equipment, housing, licensing exams, and student-led projects. The cards below are samples.</p>
-        </Reveal>
-        <div className="campaign-grid" data-stagger>
-          {campaigns.map(item => {
-            const pct = Math.round((item.raised / item.target) * 1000) / 10;
-            return <article key={item.title} className="campaign-card">
-              <header><Initials name={item.name} /><div><strong>{item.name}</strong><small>{item.major} · Sample campaign</small></div></header>
-              <h3>{item.title}</h3>
-              <p>{item.detail}</p>
-              <div className="goal-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={`${item.name} sample progress, ${money(item.raised)} of ${money(item.target)}`}><span style={{ width: `${pct}%` }} /></div>
-              <div className="goal-meta"><span>{money(item.raised)} raised of {money(item.target)}</span><span>{pct}%</span></div>
-              <small className="supporter-line">{item.supporters} supporters in this sample</small>
-              <Button variant="brand" asChild><a href={links.funds} target="_blank" rel="noreferrer">Support this goal <ArrowUpRight /></a></Button>
-            </article>;
-          })}
-        </div>
-        <p className="sample-note">Support this goal opens the real ByeUni campaign list. It does not start a payment from this page.</p>
-      </div>
+    <section className="site-wrap lp-section lp-chapters" aria-labelledby="lp-chapters-title">
+      <header className="lp-head">
+        <p className="lp-eyebrow">The platform, one chapter at a time</p>
+        <h2 id="lp-chapters-title">Follow Maya through the four things college asks of every student.</h2>
+      </header>
+      <StickyScroll chapters={chapters} />
     </section>
 
-    <section id="rewards" className="site-wrap story-section" aria-labelledby="reward-title">
-      <div className="reward-layout">
-        <Reveal>
-          <p className="eyebrow">Small steps, real progress</p>
-          <h2 id="reward-title" className="section-title">Vibeys reward the days <em>you show up.</em></h2>
-          <p>Vibeys are ByeUni points for participation: daily login, a forum post, a comment, adding friends, creating a campaign, donating, and a 20-day login streak. Redeem them for rewards inside the product. They are not cash.</p>
-          <ul className="check-list">
-            <li><Check /> New registration +50</li>
-            <li><Check /> Daily login +1 · one forum a day +20</li>
-            <li><Check /> Daily comment +10 · campaign donation +20</li>
-            <li><Check /> First 10 friends +20 · first campaign +50</li>
-            <li><Check /> 20-day login streak +11</li>
-          </ul>
-        </Reveal>
-        <div className="reward-panel">
-          <p className="panel-kicker">Sample preview · nothing is saved</p>
-          <h3>You&apos;re on a 7-day streak!</h3>
-          <p>Complete today&apos;s sample steps to see the preview points add up.</p>
-          <div className="streak-row" aria-hidden="true">{Array.from({ length: 7 }, (_, day) => <span key={day} className="is-on" />)}</div>
-          <ul className="task-list">
-            {vibeyTasks.map(task => <li key={task.id}>
-              <button type="button" aria-pressed={done.includes(task.id)} onClick={() => setDone(current => current.includes(task.id) ? current.filter(id => id !== task.id) : [...current, task.id])}>
-                <Check size={14} /> {task.label}
-              </button>
-              <span>+{task.points}</span>
-            </li>)}
-          </ul>
-          <p className="preview-points"><strong>{previewPoints}</strong> preview Vibeys from the steps you marked here.</p>
-        </div>
-      </div>
+    <CampusFilm onWatch={onWatch} />
+
+    <section className="site-wrap lp-section lp-year" aria-labelledby="lp-year-title">
+      <header className="lp-head is-center">
+        <p className="lp-eyebrow">A year on ByeUni</p>
+        <h2 id="lp-year-title">From the first lonely week to the first offer.</h2>
+        <p>Maya is a composite of the students ByeUni is built for. Here is how one year adds up.</p>
+      </header>
+      <Timeline entries={year} />
     </section>
 
-    <section id="profile" className="profile-band" aria-labelledby="profile-title">
-      <div className="site-wrap profile-layout">
-        <Reveal>
-          <p className="eyebrow">More than a résumé</p>
-          <h2 id="profile-title" className="section-title">Cvision is Alex’s living record of the work.</h2>
-          <p>Cvision is a dynamic, student-owned webpage. Skills, projects, and accomplishments stay in one place and can keep growing from the first semester to the first career move.</p>
-          <Button variant="ink" size="hero" asChild><a href={links.register} target="_blank" rel="noreferrer">Build your Cvision <ArrowUpRight /></a></Button>
-        </Reveal>
-        <article className="profile-sheet" aria-label="Sample Cvision preview for Alex Rivera">
-          <p className="panel-kicker">Sample profile</p>
-          <div className="profile-head"><Initials name="Alex Rivera" /><div><h3>Alex Rivera</h3><p>Computer science · campus map project</p></div></div>
-          <img src={project} alt="Students collaborating on a creative project in a campus makerspace" data-clip />
-          <div className="tag-row"><span>Wayfinding</span><span>Prototyping</span><span>Peer testing</span></div>
-          <dl>
-            <div><dt>Milestone</dt><dd>First public prototype shared with classmates</dd></div>
-            <div><dt>Community</dt><dd>Forums, a design partner search, a build-night signup</dd></div>
-            <div><dt>Goal</dt><dd>Equipment campaign so the project can travel</dd></div>
-          </dl>
-        </article>
+    <section className="site-wrap lp-section lp-platform" aria-labelledby="lp-platform-title">
+      <header className="lp-head">
+        <p className="lp-eyebrow">Everything in one place</p>
+        <h2 id="lp-platform-title">Everything campus life asks for, in one student network.</h2>
+        <p>The pieces that usually live in six different apps, built to work together for students and the schools that support them.</p>
+      </header>
+      <BentoGrid>
+        <BentoGridItem className="is-wide" header={<ForumsArt />} icon={<MessagesSquare />} title="Forums and group chats" description="Clubs, courses, and causes each get a forum, while private and group chats keep the conversation going." />
+        <BentoGridItem header={<VibeArt />} icon={<HeartPulse />} title="Vibe Check" description="A 20-second daily check-in. Notes stay private; schools only see anonymous campus totals." />
+        <BentoGridItem header={<SotdArt />} icon={<Crown />} title="Student of the Day" description="Every day one student’s work gets the spotlight, and the whole campus can cheer them on." />
+        <BentoGridItem header={<UpdatesArt />} icon={<CalendarDays />} title="Events and school updates" description="Announcements from your school and what’s on this week, right in your feed." />
+        <BentoGridItem header={<RewardsArt />} icon={<Gift />} title="Vibeys rewards" description="Points for participation that students redeem for rewards. Credit for showing up, not cash." />
+        <BentoGridItem header={<AppsArt />} icon={<Smartphone />} title="On iPhone and Android" description="Take campus with you. ByeUni is on the App Store and Google Play." />
+        <BentoGridItem className="is-wide" header={<CvArt />} icon={<FileUser />} title="CVision portfolios" description="Themes, layouts, projects, and GitHub and LeetCode activity on a page each student owns." />
+      </BentoGrid>
+    </section>
+
+    <section className="lp-section lp-voices" aria-labelledby="lp-voices-title">
+      <header className="site-wrap lp-head is-center">
+        <p className="lp-eyebrow">On campus</p>
+        <h2 id="lp-voices-title">The work students are already sharing.</h2>
+        <p>Illustrative posts based on how students use ByeUni.</p>
+      </header>
+      <InfiniteMovingCards items={voices[0] ?? []} speed="slow" />
+      <InfiniteMovingCards items={voices[1] ?? []} direction="right" speed="slow" />
+    </section>
+
+    <section id="universities" className="lp-section lp-schools" aria-labelledby="lp-schools-title">
+      <div className="site-wrap lp-schools-inner">
+        <header className="lp-head">
+          <p className="lp-eyebrow">For colleges and universities</p>
+          <h2 id="lp-schools-title">Stronger connections. Brighter outcomes.</h2>
+          <p>ByeUni is a student engagement and success platform for retention, belonging, and career readiness, with a portal that keeps every school focused on its own students.</p>
+          <div className="lp-actions">
+            <Button variant="ink" size="hero" asChild><Link to="/school">Request a demo <ArrowRight /></Link></Button>
+            <Button variant="soft" size="hero" onClick={onWatch}><Play /> Watch the introduction</Button>
+          </div>
+        </header>
+        <HoverEffect items={schoolBenefits} />
       </div>
     </section>
 
-    <section id="discover" className="site-wrap story-section" aria-labelledby="discover-title">
-      <Reveal className="story-intro">
-        <p className="eyebrow">Discover your people</p>
-        <h2 id="discover-title" className="section-title">Find the students already working on something like yours.</h2>
-        <p>ByeUni connects students by campus and major. The previews below are samples about belonging, not follower counts.</p>
-      </Reveal>
-      <div className="filter-row" role="toolbar" aria-label="Sample discovery filters">
-        {circles.map(item => <button key={item} type="button" className="filter-chip" aria-pressed={circle === item} onClick={() => setCircle(item)}>{item}</button>)}
-      </div>
-      <div className="people-grid" data-stagger>
-        {visiblePeople.map(person => <article key={person.name} className="people-card">
-          <Initials name={person.name} />
-          <h3>{person.name}</h3>
-          <small>{person.major}</small>
-          <p>{person.note}</p>
-          <span className="tag-pill">{person.focus}</span>
-        </article>)}
-      </div>
-      <Button variant="editorial" asChild className="story-cta"><a href={links.people} target="_blank" rel="noreferrer">Meet your community <ArrowUpRight /></a></Button>
-    </section>
-
-    <section id="activity" className="activity-band" aria-labelledby="activity-title">
-      <div className="site-wrap story-section">
-        <Reveal className="story-intro">
-          <p className="eyebrow">Small wins deserve recognition</p>
-          <h2 id="activity-title" className="section-title">The moments <em>worth a mention.</em></h2>
-          <p>A sample stream of progress. Not a live activity feed.</p>
-        </Reveal>
-        <div className="activity-grid" data-stagger>
-          <article className="activity-card wide"><Initials name="Alex Rivera" /><div><small>Sample · project</small><h3>Alex shares the first finished prototype.</h3><p>Classmates can see the work, not just the major on a profile.</p></div></article>
-          <article className="activity-card mint"><small>Sample · campaign</small><h3>Maya’s robotics goal passes 62%.</h3><p>$1,250 of a $2,000 sample target.</p></article>
-          <article className="activity-card ink"><small>Sample · Vibeys</small><h3>A 7-day streak badge.</h3><p>Consistency, shown as a preview — not a payout.</p></article>
-          <article className="activity-card"><small>Sample · campus</small><h3>North Quad Lab finishes build night.</h3><p>A collaborative initiative with a photo worth keeping.</p><img src={campus} alt="" /></article>
-          <article className="activity-card"><small>Sample · career</small><h3>Jordan writes up the internship offer.</h3><p>A milestone the next student in that major can learn from.</p></article>
-        </div>
-      </div>
-    </section>
-
-    <section id="journey" className="site-wrap story-section" aria-labelledby="journey-title">
-      <Reveal className="story-intro">
-        <p className="eyebrow">From joining to achieving</p>
-        <h2 id="journey-title" className="section-title">Four moves. <em>One student story.</em></h2>
-      </Reveal>
-      <div className="path-progress" aria-hidden="true"><span /></div>
-      <ol className="path">
-        <li><span>01</span><h3>Join</h3><p>Create your student profile and discover your community.</p><a href={links.register} target="_blank" rel="noreferrer">Create an account</a></li>
-        <li><span>02</span><h3>Participate</h3><p>Share updates, connect with peers, and take on the daily actions that earn Vibeys.</p><a href={links.people} target="_blank" rel="noreferrer">Find your people</a></li>
-        <li><span>03</span><h3>Grow</h3><p>Build skills, document milestones, and keep a Cvision that is more than a résumé.</p><a href={links.register} target="_blank" rel="noreferrer">Start your Cvision</a></li>
-        <li><span>04</span><h3>Get supported</h3><p>Share a meaningful educational goal and invite people to contribute.</p><a href={links.funds} target="_blank" rel="noreferrer">Explore campaigns</a></li>
-      </ol>
-    </section>
-
-    <section className="possibility-band"><div className="site-wrap">
-      <p className="eyebrow">Your next chapter</p>
-      <h2>Your next chapter starts with <em>one connection.</em></h2>
-      <p>Share your journey. Find your people. Keep moving forward.</p>
-      <div className="stage-actions center-actions">
-        <Button variant="ink" size="hero" asChild data-magnetic><a href={links.register} target="_blank" rel="noreferrer">Join ByeUni <ArrowUpRight /></a></Button>
-        <Button variant="soft" size="hero" asChild data-magnetic><a href={links.people} target="_blank" rel="noreferrer">Explore the Community</a></Button>
-      </div>
-    </div></section>
-
-    <section className="site-wrap university" id="universities">
+    <section className="site-wrap lp-section lp-faq" aria-labelledby="lp-faq-title">
       <div>
-        <p className="eyebrow">For colleges and universities</p>
-        <h3>Stronger connections. Brighter outcomes.</h3>
-        <p>ByeUni is a student engagement and success platform for retention, belonging, and career readiness. Connect students by campus and major, support academic and career goals, and prepare students for life after graduation through a dynamic, student-owned experience.</p>
-        <button type="button" className="text-link" onClick={onWatch}>Watch the introduction</button>
-      </div>
-      <div className="flex gap-3 flex-wrap">
-        <Button variant="soft" size="hero" asChild><a href={links.school} target="_blank" rel="noreferrer">School admin login <ArrowUpRight /></a></Button>
-        <Button variant="ink" size="hero" asChild><a href={links.demo} target="_blank" rel="noreferrer">Request a demo <ArrowUpRight /></a></Button>
-      </div>
-    </section>
-
-    <section className="site-wrap story-section faq-grid" aria-labelledby="faq-title">
-      <div>
-        <p className="eyebrow">A few things you might be wondering</p>
-        <h2 id="faq-title" className="section-title">Good questions. <em>A little clarity.</em></h2>
-        <Button variant="editorial" asChild><a href="https://byeuni.com/byeuni-faqs/" target="_blank" rel="noreferrer">More questions? <ArrowUpRight /></a></Button>
+        <p className="lp-eyebrow">Questions, answered</p>
+        <h2 id="lp-faq-title">Good questions. <em>A little clarity.</em></h2>
+        <Button variant="soft" asChild><Link to="/faqs">More questions <ArrowRight /></Link></Button>
       </div>
       <Accordion type="single" collapsible>
-        {[
-          ['What is ByeUni?', 'ByeUni brings student connection, educational fundraising, and a dynamic portfolio together. Find peers, share your journey, and build toward your future.'],
-          ['How can I find people on my campus?', 'Explore the ByeUni community to connect with students by campus and major. Forums and private or group chats offer ways to keep conversations going.'],
-          ['What can a campaign support?', 'Campaigns can focus on educational goals such as textbooks, equipment, travel, internships, housing, or licensing exams. The campaign cards on this page are samples. Visit the campaign list for current campaigns.'],
-          ['What makes Cvision different from a résumé?', 'Cvision is a dynamic, student-owned webpage that brings your experiences, skills, and accomplishments together. It can grow as you add new chapters to your student journey.'],
-          ['What are Vibeys?', 'Vibeys are ByeUni’s participation rewards. Students can earn points by engaging with their community and redeem them for rewards. Points are not cash. The streak panel on this page is a local preview only.'],
-          ['Where do I create an account?', 'Use Join ByeUni to open account registration. If you already have an account, use Log in to return to the platform.'],
-        ].map(([question, answer], i) => <AccordionItem key={question} value={`faq-${i}`}><AccordionTrigger className="faq-trigger">{question}</AccordionTrigger><AccordionContent className="faq-answer">{answer}</AccordionContent></AccordionItem>)}
+        {faqs.map(([question, answer], i) => <AccordionItem key={question} value={`faq-${i}`}>
+          <AccordionTrigger className="faq-trigger">{question}</AccordionTrigger>
+          <AccordionContent className="faq-answer">{answer}</AccordionContent>
+        </AccordionItem>)}
       </Accordion>
+    </section>
+
+    <section className="lp-finale" aria-labelledby="lp-finale-title">
+      <LampContainer>
+        <motion.h2
+          id="lp-finale-title"
+          initial={{ opacity: 0.5, y: 80 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.3, duration: 0.8, ease: 'easeInOut' }}
+        >Your next chapter starts<br />with one connection.</motion.h2>
+        <p>Share your journey. Find your people. Keep moving forward.</p>
+        <div className="lp-actions">
+          <Button variant="ink" size="hero" className="lp-light-btn" asChild><Link to="/register">Join ByeUni <ArrowRight /></Link></Button>
+          <Button variant="soft" size="hero" className="lp-ghost-btn" asChild><Link to="/people">Explore the community</Link></Button>
+        </div>
+      </LampContainer>
     </section>
   </>;
 }

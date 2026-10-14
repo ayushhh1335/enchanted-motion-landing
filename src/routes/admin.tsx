@@ -38,6 +38,6 @@ function AdminPage() {
   if (session?.role !== 'admin') return null;
   return <AdminProvider>
     <AdminShell section={section ?? 'overview'} focus={focus} />
-    <Toaster position="top-center" richColors closeButton />
+    <Toaster />
   </AdminProvider>;
 }

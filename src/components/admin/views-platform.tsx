@@ -17,6 +17,7 @@ import {
   type SystemConfig,
 } from '@/content/admin-data';
 import { signOutDemo } from '@/lib/demo-session';
+import { todaysQuote } from '@/lib/student-sync';
 import { cn } from '@/lib/utils';
 import { uid, useAdmin, type LibraryKind } from './store';
 import { AdminTabs, Confirm, Empty, Face, PageHead, Pill, UserCell, day, dollars, userPhoto } from './ui';
@@ -292,7 +293,7 @@ type LibraryTab = LibraryKind;
 const libraryHead: Record<LibraryTab, [string, string]> = {
   categories: ['Categories', 'Campaign categories students choose when they publish a fundraiser.'],
   majors: ['Majors', 'Majors offered on registration and stored on each student profile.'],
-  quotes: ['Quotes', 'One active quote is chosen at random for students.'],
+  quotes: ['Quotes', 'Active quotes take turns as the Quote of the day on every dashboard.'],
   ecards: ['eCards', 'Cards a donor can send with a gift. Prices are set in System Configuration.'],
 };
 
@@ -357,6 +358,7 @@ export function LibraryView({ pane }: { pane?: LibraryTab | undefined }) {
       <div className="adm-toolbar"><Button variant="ink" className="ml-auto" onClick={() => setQuoteEdit('new')}><Plus /> Add quote</Button></div>
       <div className="adm-cards is-grid">
         {quotes.map(q => <article key={q.id} className={cn('db-panel adm-quote', !q.active && 'is-off')}>
+          {todaysQuote(quotes)?.id === q.id ? <span className="adm-quote-today"><Sparkles /> Today’s quote</span> : null}
           <blockquote>“{q.text}”</blockquote>
           <cite>— {q.author}</cite>
           <div className="adm-school-foot">

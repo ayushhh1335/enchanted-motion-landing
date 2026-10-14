@@ -45,7 +45,6 @@ export type Post = {
   likes: number;
   likedBy: string[];
   comments: Comment[];
-  reposts: number;
 };
 export type Campaign = {
   id: string;
@@ -161,7 +160,6 @@ export const seedPosts: Post[] = [
       { id: 'c1', authorId: 'hannah', text: 'This is amazing! Count me in for the next build day.', at: ago(HOUR) },
       { id: 'c2', authorId: 'sofia', text: 'Love seeing this. Add it to your CVision projects!', at: ago(40 * MIN) },
     ],
-    reposts: 8,
   },
   {
     id: 'post-research',
@@ -174,7 +172,6 @@ export const seedPosts: Post[] = [
     likes: 342,
     likedBy: ['chloe'],
     comments: [{ id: 'c3', authorId: 'marcus', text: 'Huge congrats Hannah 👏', at: ago(3 * HOUR) }],
-    reposts: 21,
   },
   {
     id: 'post-seoul',
@@ -187,7 +184,6 @@ export const seedPosts: Post[] = [
     likes: 214,
     likedBy: [],
     comments: [],
-    reposts: 5,
   },
   {
     id: 'post-app',
@@ -200,7 +196,6 @@ export const seedPosts: Post[] = [
     likes: 95,
     likedBy: [],
     comments: [{ id: 'c4', authorId: 'lucas', text: 'Clean UI. Is it open source?', at: ago(20 * HOUR) }],
-    reposts: 3,
   },
   {
     id: 'post-fair',
@@ -213,7 +208,6 @@ export const seedPosts: Post[] = [
     likes: 61,
     likedBy: [],
     comments: [],
-    reposts: 12,
   },
   {
     id: 'post-me-hackmit',
@@ -226,7 +220,6 @@ export const seedPosts: Post[] = [
     likes: 188,
     likedBy: ['chloe', 'hannah'],
     comments: [{ id: 'c5', authorId: 'chloe', text: 'LET\'S GO 🎉', at: ago(3 * DAY - HOUR) }],
-    reposts: 14,
   },
   {
     id: 'post-me-study',
@@ -239,7 +232,6 @@ export const seedPosts: Post[] = [
     likes: 74,
     likedBy: ['hannah'],
     comments: [],
-    reposts: 2,
   },
   {
     id: 'post-me-stripe',
@@ -252,7 +244,6 @@ export const seedPosts: Post[] = [
     likes: 256,
     likedBy: ['sofia', 'marcus'],
     comments: [],
-    reposts: 9,
   },
 ];
 

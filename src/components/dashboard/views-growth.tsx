@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { AppearancePanel } from '@/components/Appearance';
 import { Button } from '@/components/ui/button';
 import { Dropdown, type DropdownOption } from '@/components/ui/dropdown';
+import { SpotlightLayer } from '@/components/ui/spotlight';
 import { ChoiceRow, SavedHint, SettingsGroup, SwitchRow, useStoredPrefs } from '@/components/settings-kit';
 import { DEMO_CREDENTIALS, REAL_LOGIN_URL, signOutDemo } from '@/lib/demo-session';
 import { ME_ID, majorOf, me, personById, rewards, vibeyRules } from '@/content/dashboard-data';
@@ -78,7 +79,8 @@ export function CampaignsView() {
     onOpen={() => setViewing(c.id)} onSupport={() => setDonating(c)} />;
 
   return <div className="db-view fd">
-    <section className="fd-hero">
+    <section className="fd-hero has-spotlight">
+      <SpotlightLayer className="db-spot" fill="white" strength={0.16} />
       <div className="fd-hero-copy">
         <span className="fd-eyebrow"><HandHeart /> Fundraising</span>
         <h1>Back a classmate. Fund your next step.</h1>
@@ -192,7 +194,8 @@ function CampaignCard({ campaign: c, gave, onOpen, onSupport }: CardProps) {
 function FeaturedCampaign({ campaign: c, gave, onOpen, onSupport }: CardProps) {
   const owner = personById(c.ownerId);
   const pct = percentOf(c);
-  return <article className="fd-featured" aria-label="Featured campaign">
+  return <article className="fd-featured has-spotlight" aria-label="Featured campaign">
+    <SpotlightLayer className="db-spot is-right" />
     <button type="button" className="fd-featured-media" onClick={onOpen} tabIndex={-1} aria-hidden="true"><img src={c.image} alt="" /></button>
     <div className="fd-featured-body">
       <span className="fd-flag"><Flame /> Ending soon · {c.daysLeft} days left</span>
@@ -276,7 +279,8 @@ export function VibeysView() {
   const week = Array.from({ length: 7 }, (_, i) => i < Math.min(vibeys.streak, 7));
   return <div className="db-view">
     <ViewHeader title="My Vibeys" subtitle="Points for showing up. Redeem them for real rewards." />
-    <section className="db-vibey-hero">
+    <section className="db-vibey-hero has-spotlight">
+      <SpotlightLayer className="db-spot" fill="white" strength={0.16} />
       <div>
         <small>Your balance</small>
         <strong>{vibeys.balance.toLocaleString('en-US')}</strong>

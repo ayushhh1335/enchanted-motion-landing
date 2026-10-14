@@ -6,8 +6,10 @@ import {
   LifeBuoy, Mail, Megaphone, MessageCircle, Meh, MessageSquareText, Pencil, PartyPopper, Phone, Send, Share2, Smile, Sparkles, UserPlus, Users, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { AnimatedTooltip } from '@/components/ui/animated-tooltip';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { SpotlightLayer } from '@/components/ui/spotlight';
 import {
   INVITES_PER_DAY, campusPulse, isMajorMate, isSchoolmate, majorOf, me, moods, people, personById, vibeReasons, vibeWords,
   type Mood, type VibeTone,
@@ -251,12 +253,12 @@ export function VibeCheck() {
           </div>
         </div>
       </div> : null}
-      <SpotlightStrip />
     </section>;
   }
 
   const tone = mood ? toneOf(mood) : null;
-  return <section className={cn('db-panel vc-card', tone && `tone-${tone}`)} aria-label="Vibe Check">
+  return <section className={cn('db-panel vc-card has-spotlight', tone && `tone-${tone}`)} aria-label="Vibe Check">
+    <SpotlightLayer className="db-spot" />
     <div className="vc-head">
       <div>
         <small className="vc-eyebrow"><Sparkles /> Vibe Check · +5 Vibeys</small>
@@ -286,26 +288,38 @@ export function VibeCheck() {
         <Button variant="ink" disabled={!words.length} onClick={submit}>{editing ? 'Update check-in' : 'Check in'} <Send /></Button>
       </div>
     </div> : <p className="vc-privacy"><HeartHandshake /> Takes 20 seconds. Your school only sees anonymous campus totals.</p>}
-    <SpotlightStrip />
   </section>;
 }
 
 /* ---------------- Recent updates from your school ---------------- */
 
-type SchoolFeed = { updates: SchoolUpdate[]; colors: [string, string]; name: string };
+type SchoolFeed = { updates: SchoolUpdate[]; colors: [string, string]; name: string; logo?: string | undefined };
 
 function readSchoolFeed(): SchoolFeed {
-  const fallback: SchoolFeed = { updates: seedUpdates, colors: seedSchool.colors, name: seedSchool.name };
+  const fallback: SchoolFeed = { updates: seedUpdates, colors: seedSchool.colors, name: seedSchool.name, logo: seedSchool.logo };
   try {
     const raw = localStorage.getItem('byeuni-school-v1');
     if (!raw) return fallback;
-    const saved = JSON.parse(raw) as { updates?: SchoolUpdate[]; school?: { colors?: [string, string]; name?: string } };
+    const saved = JSON.parse(raw) as { updates?: SchoolUpdate[]; school?: { colors?: [string, string]; name?: string; logo?: string } };
     return {
       updates: Array.isArray(saved.updates) ? saved.updates : fallback.updates,
       colors: saved.school?.colors ?? fallback.colors,
       name: saved.school?.name ?? fallback.name,
+      logo: saved.school ? saved.school.logo : fallback.logo,
     };
   } catch { return fallback; }
+}
+
+const crestLetter = (name: string) => name.replace(/University|College|of|The/g, '').trim()[0];
+
+/** The student's university in school colors, with the logo the school admin uploads on /school-admin. */
+export function SchoolBadge() {
+  const { colors, name, logo } = useSchoolFeed();
+  const style = { '--su-a': colors[0], '--su-b': colors[1] } as CSSProperties;
+  return <ViewLink view="network" tab="school" className="db-uni" aria-label={`${name}: students at your school`}>
+    <span className="su-crest db-uni-crest" style={style} aria-hidden="true">{logo ? <img src={logo} alt="" /> : crestLetter(name)}</span>
+    <span className="db-uni-text"><strong>{name}</strong><small>Your university</small></span>
+  </ViewLink>;
 }
 
 /** Updates the school admin posts on /school-admin show up here, including from another tab. */
@@ -341,7 +355,7 @@ function whenText(at: number) {
 
 /** `compact` is the right-rail version: the next event in school colors, then a short list. */
 export function SchoolUpdates({ compact }: { compact?: boolean }) {
-  const { updates, colors, name } = useSchoolFeed();
+  const { updates, colors, name, logo: feedLogo } = useSchoolFeed();
   const [open, setOpen] = useState<SchoolUpdate | null>(null);
   const [all, setAll] = useState(false);
   const style = { '--su-a': colors[0], '--su-b': colors[1] } as CSSProperties;
@@ -358,7 +372,7 @@ export function SchoolUpdates({ compact }: { compact?: boolean }) {
     </span>
   </button>;
 
-  const crest = <span className="su-crest" aria-hidden="true">{name.replace(/University|College|of|The/g, '').trim()[0]}</span>;
+  const crest = <span className="su-crest" aria-hidden="true">{feedLogo ? <img src={feedLogo} alt="" /> : crestLetter(name)}</span>;
   const [next, ...rest] = updates;
   const featured = next && next.eventDate >= today ? next : null;
 
@@ -428,34 +442,48 @@ export function SchoolUpdates({ compact }: { compact?: boolean }) {
 
 /* ---------------- Student of the Day (select_student_cron.php) ---------------- */
 
-/** Lives inside the Vibe Check card so it shows on every screen size. */
-function SpotlightStrip() {
+/** Its own card in the home column, next to Vibe Check, so it shows on every screen size. */
+export function StudentOfTheDay() {
   const { spotlight, connections, actions, kudosSent, chats } = useDashboard();
   const person = personById(spotlight.personId);
   const state = connections[person.id] ?? 'none';
   const chat = chats.find(c => c.personId === person.id);
   const first = person.name.split(' ')[0];
+  const cheerers = [...(kudosSent ? [me] : []), ...people.filter(p => p.id !== person.id && isSchoolmate(p) && p.id !== me.id).slice(0, kudosSent ? 3 : 4)];
+  const cheers = 23 + (kudosSent ? 1 : 0);
 
-  return <div className="sotd-strip" role="group" aria-label="Student of the Day">
-    <ProfileLink personId={person.id} className="sotd-ring" aria-label={`${person.name}'s profile`}><Avatar person={person} size={44} /></ProfileLink>
-    <div className="sotd-strip-text">
-      <small className="sotd-strip-label"><Crown /> Student of the Day · {format(new Date(), 'MMM d')}</small>
-      <strong><ProfileLink personId={person.id} className="db-name-link">{person.name}</ProfileLink> {person.verified ? <BadgeCheck className="db-verified" /> : null}</strong>
-      <span title={spotlight.reason}><Sparkles /> {spotlight.highlight}</span>
+  return <section className={cn('db-panel sotd-card', !kudosSent && 'has-spotlight')} aria-label="Student of the Day">
+    {kudosSent ? null : <SpotlightLayer className="db-spot" />}
+    <header className="sotd-card-head">
+      <small className="sotd-strip-label"><Crown /> Student of the Day</small>
+      <span>{format(new Date(), 'EEEE, MMM d')}</span>
+    </header>
+    <div className="sotd-strip">
+      <ProfileLink personId={person.id} className="sotd-ring" aria-label={`${person.name}'s profile`}><Avatar person={person} size={52} /></ProfileLink>
+      <div className="sotd-strip-text">
+        <strong><ProfileLink personId={person.id} className="db-name-link">{person.name}</ProfileLink> {person.verified ? <BadgeCheck className="db-verified" /> : null}</strong>
+        <small className="sotd-strip-major">{majorOf(person)} · {person.year}</small>
+        <span title={spotlight.reason}><Sparkles /> {spotlight.highlight}</span>
+      </div>
+      <div className="sotd-strip-actions">
+        {state === 'connected'
+          ? chat ? <Button variant="soft" size="icon" asChild><Link to="/dashboard" search={{ view: 'messages', chat: chat.id }} aria-label={`Message ${first}`} title={`Message ${first}`}><MessageCircle /></Link></Button> : null
+          : state === 'incoming'
+            ? <Button variant="soft" size="icon" aria-label={`Accept ${first}'s request`} title="Accept request" onClick={() => { actions.setConnection(person.id, 'connected'); toast.success(`You and ${first} are now friends`); }}><Check /></Button>
+            : <Button variant="soft" size="icon" className={cn(state === 'pending' && 'is-pending')} aria-label={state === 'pending' ? 'Cancel friend request' : `Add ${first} as a friend`} title={state === 'pending' ? 'Request sent · tap to cancel' : 'Add friend'} onClick={() => actions.setConnection(person.id, state === 'pending' ? 'none' : 'pending')}>
+              {state === 'pending' ? <Check /> : <UserPlus />}
+            </Button>}
+        <Button variant={kudosSent ? 'soft' : 'ink'} size="sm" className="sotd-cheer" disabled={kudosSent} onClick={actions.sendKudos}>
+          <PartyPopper /> {kudosSent ? 'Cheered' : `Cheer ${first}`}
+        </Button>
+      </div>
     </div>
-    <div className="sotd-strip-actions">
-      {state === 'connected'
-        ? chat ? <Button variant="soft" size="icon" asChild><Link to="/dashboard" search={{ view: 'messages', chat: chat.id }} aria-label={`Message ${first}`} title={`Message ${first}`}><MessageCircle /></Link></Button> : null
-        : state === 'incoming'
-          ? <Button variant="soft" size="icon" aria-label={`Accept ${first}'s request`} title="Accept request" onClick={() => { actions.setConnection(person.id, 'connected'); toast.success(`You and ${first} are now friends`); }}><Check /></Button>
-          : <Button variant="soft" size="icon" className={cn(state === 'pending' && 'is-pending')} aria-label={state === 'pending' ? 'Cancel friend request' : `Add ${first} as a friend`} title={state === 'pending' ? 'Request sent · tap to cancel' : 'Add friend'} onClick={() => actions.setConnection(person.id, state === 'pending' ? 'none' : 'pending')}>
-            {state === 'pending' ? <Check /> : <UserPlus />}
-          </Button>}
-      <Button variant={kudosSent ? 'soft' : 'ink'} size="sm" className="sotd-cheer" disabled={kudosSent} onClick={actions.sendKudos}>
-        <PartyPopper /> {kudosSent ? 'Cheered' : `Cheer ${first}`}
-      </Button>
-    </div>
-  </div>;
+    <p className="sotd-reason">{spotlight.reason}</p>
+    <footer className="sotd-cheers">
+      <AnimatedTooltip items={cheerers.map(p => ({ id: p.id, name: p.id === me.id ? 'You' : p.name, designation: `${majorOf(p)} · ${p.school}`, avatar: <Avatar person={p} size={26} /> }))} />
+      <small><b>{cheers}</b> cheers from {me.school.split(' ')[0]}</small>
+    </footer>
+  </section>;
 }
 
 /* ---------------- School Friends / Major Friends (homepage.php network suggestions) ---------------- */

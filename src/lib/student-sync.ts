@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import type { Suggestion } from '@/content/admin-data';
+import { seedQuotes, type Quote, type Suggestion } from '@/content/admin-data';
 import type { CvContent, CvProfile } from '@/content/cvision-data';
 import type { Account } from '@/content/dashboard-data';
+import type { DemoRole } from '@/lib/demo-session';
 
 /**
  * The three demo dashboards keep separate stores, so anything a student sends to the
@@ -90,3 +91,50 @@ function readLiveStudent(): LiveStudent | null {
 
 /** What the demo student last saved on their dashboard and CVision, so consoles show their edits. */
 export const useLiveStudent = () => useStorageSync(readLiveStudent, DASHBOARD_KEY);
+
+/* ---------------- Quote of the day, from the platform admin's quote library ---------------- */
+
+const ADMIN_KEY = 'byeuni-admin-v1';
+const QUOTE_SEEN_KEY = 'byeuni-quote-v1';
+const localDay = (date = new Date()) => `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+
+function readQuotes(): Quote[] {
+  try {
+    const raw = localStorage.getItem(ADMIN_KEY);
+    const saved = raw ? JSON.parse(raw) as { quotes?: Quote[] } : {};
+    return Array.isArray(saved.quotes) ? saved.quotes : seedQuotes;
+  } catch {
+    return seedQuotes;
+  }
+}
+
+export const useSharedQuotes = () => useStorageSync(readQuotes, ADMIN_KEY);
+
+/** Every dashboard picks the same active quote for a calendar day. */
+export function todaysQuote(quotes: Quote[], date = new Date()): Quote | null {
+  const active = quotes.filter(quote => quote.active);
+  if (!active.length) return null;
+  const day = Math.floor(new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() / 86_400_000);
+  return active[day % active.length] ?? null;
+}
+
+type QuoteSeen = Partial<Record<DemoRole, { day: string; at: number }>>;
+
+function readQuoteSeen(): QuoteSeen {
+  try {
+    const raw = localStorage.getItem(QUOTE_SEEN_KEY);
+    return raw ? JSON.parse(raw) as QuoteSeen : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Due on the first visit of each day, and again after every sign-in. */
+export function quoteDue(role: DemoRole, signedInAt: number) {
+  const seen = readQuoteSeen()[role];
+  return !seen || seen.day !== localDay() || signedInAt > seen.at;
+}
+
+export function markQuoteSeen(role: DemoRole) {
+  try { localStorage.setItem(QUOTE_SEEN_KEY, JSON.stringify({ ...readQuoteSeen(), [role]: { day: localDay(), at: Date.now() } })); } catch { /* Shown again next visit. */ }
+}

@@ -1,14 +1,19 @@
-import { useRef, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
 import { formatDistanceToNowStrict } from 'date-fns';
+import * as HoverCardPrimitive from '@radix-ui/react-hover-card';
+import { AnimatePresence, motion } from 'motion/react';
 import {
-  Bell, BookUser, Bookmark, CalendarDays, FileUser, HandHeart, Home, Lightbulb, MessageCircle, ReceiptText, Settings, ShieldCheck, Sparkles, UserRound,
-  Users, UsersRound, Wallet,
+  BadgeCheck, Bell, BookUser, Bookmark, CalendarDays, Check, Crown, FileUser, GraduationCap, HandHeart, Home, Lightbulb, MapPin, MessageCircle, ReceiptText,
+  Settings, ShieldCheck, Sparkles, UserPlus, UserRound, Users, UsersRound, Wallet,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { AnimatedTooltip } from '@/components/ui/animated-tooltip';
 import { imageFileToDataUrl } from '@/lib/image-file';
-import { ME_ID, type Person } from '@/content/dashboard-data';
+import { ME_ID, majorOf, people, personById, type Person } from '@/content/dashboard-data';
 import { cn } from '@/lib/utils';
+import { useDashboard } from './store';
 
 export const views = ['home', 'network', 'messages', 'communities', 'campaigns', 'events', 'vibeys', 'cvision', 'saved', 'suggestions', 'notifications', 'profile', 'account', 'settings'] as const;
 export type View = (typeof views)[number];
@@ -52,15 +57,81 @@ export function ViewLink({ view, tab, className, children, onClick, ...rest }: {
   return <Link to="/dashboard" search={view === 'home' ? {} : tab ? { view, tab } : { view }} className={className} onClick={onClick} {...rest}>{children}</Link>;
 }
 
-/** Opens a student's profile; your own id goes to your profile. */
-export function ProfileLink({ personId, className, children, onClick, 'aria-label': label }: { personId: string; className?: string | undefined; children: ReactNode; onClick?: (() => void) | undefined; 'aria-label'?: string | undefined }) {
-  return <Link
+/** Opens a student's profile; your own id goes to your profile. Other students get an animated hover card unless `card` is false. */
+export function ProfileLink({ personId, className, children, onClick, card = true, 'aria-label': label }: { personId: string; className?: string | undefined; children: ReactNode; onClick?: (() => void) | undefined; card?: boolean; 'aria-label'?: string | undefined }) {
+  const link = <Link
     to="/dashboard"
     search={personId === ME_ID ? { view: 'profile' } : { view: 'profile', person: personId }}
     className={cn('db-profile-link', className)}
     onClick={onClick}
     aria-label={label}
   >{children}</Link>;
+  return card && personId !== ME_ID ? <ProfileHoverCard personId={personId} onNavigate={onClick}>{link}</ProfileHoverCard> : link;
+}
+
+function ProfileHoverCard({ personId, onNavigate, children }: { personId: string; onNavigate?: (() => void) | undefined; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return <HoverCardPrimitive.Root open={open} onOpenChange={setOpen} openDelay={400} closeDelay={150}>
+    <HoverCardPrimitive.Trigger asChild>{children}</HoverCardPrimitive.Trigger>
+    <AnimatePresence>
+      {open ? <HoverCardPrimitive.Portal forceMount>
+        <HoverCardPrimitive.Content forceMount asChild side="bottom" align="start" sideOffset={8} collisionPadding={12}>
+          <motion.div
+            className="db-hcard"
+            initial={{ opacity: 0, y: 10, scale: 0.92, rotateX: -14 }}
+            animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
+            exit={{ opacity: 0, y: 6, scale: 0.96, transition: { duration: 0.12 } }}
+            transition={{ type: 'spring', stiffness: 340, damping: 24 }}
+          >
+            <ProfileHoverBody personId={personId} onNavigate={() => { setOpen(false); onNavigate?.(); }} />
+          </motion.div>
+        </HoverCardPrimitive.Content>
+      </HoverCardPrimitive.Portal> : null}
+    </AnimatePresence>
+  </HoverCardPrimitive.Root>;
+}
+
+function ProfileHoverBody({ personId, onNavigate }: { personId: string; onNavigate: () => void }) {
+  const { connections, posts, chats, spotlight, actions } = useDashboard();
+  const person = personById(personId);
+  const state = connections[personId] ?? 'none';
+  const first = person.name.replace(/^(Dr|Prof|Coach)\.?\s+/, '').split(' ')[0];
+  const chat = chats.find(c => c.personId === personId);
+  const mutuals = people.filter(p => p.id !== ME_ID && p.id !== personId && connections[p.id] === 'connected').slice(0, 4);
+  const stagger = (i: number) => ({ initial: { opacity: 0, y: 6 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.06 + i * 0.04 } });
+
+  return <>
+    <div className="db-hcard-cover" aria-hidden="true"><i /><i /></div>
+    <motion.div className="db-hcard-face" initial={{ scale: 0.6, rotate: -10 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 14, delay: 0.05 }}>
+      <Avatar person={person} size={64} />
+      {spotlight.personId === personId ? <span className="db-hcard-crown" title="Student of the Day"><Crown /></span> : null}
+    </motion.div>
+    <motion.div className="db-hcard-id" {...stagger(0)}>
+      <strong>{person.name} {person.verified ? <BadgeCheck className="db-verified" aria-label="Verified" /> : null}</strong>
+      <small>@{person.handle}{person.online ? <em> · Active now</em> : null}</small>
+    </motion.div>
+    <motion.p className="db-hcard-meta" {...stagger(1)}><GraduationCap /> {majorOf(person)} · {person.school}</motion.p>
+    <motion.p className="db-hcard-meta" {...stagger(2)}><MapPin /> {person.city} · {person.year}</motion.p>
+    <motion.dl className="db-hcard-stats" {...stagger(3)}>
+      <div><dt>Mutual</dt><dd>{person.mutual}</dd></div>
+      <div><dt>Posts</dt><dd>{posts.filter(post => post.authorId === personId).length}</dd></div>
+      <div><dt>Status</dt><dd>{state === 'connected' ? 'Friends' : state === 'pending' ? 'Requested' : state === 'incoming' ? 'Wants in' : 'New'}</dd></div>
+    </motion.dl>
+    {mutuals.length ? <motion.div className="db-hcard-mutual" {...stagger(4)}>
+      <AnimatedTooltip items={mutuals.map(m => ({ id: m.id, name: m.name, designation: `${majorOf(m)} · ${m.school}`, avatar: <Avatar person={m} size={26} /> }))} />
+      <small>Friends with {mutuals[0]?.name.split(' ')[0]}{mutuals.length > 1 ? ` and ${person.mutual > 1 ? person.mutual - 1 : mutuals.length - 1} more` : ''}</small>
+    </motion.div> : null}
+    <motion.div className="db-hcard-actions" {...stagger(5)}>
+      {state === 'connected'
+        ? <Button variant="ink" size="sm" asChild><Link to="/dashboard" search={chat ? { view: 'messages', chat: chat.id } : { view: 'messages' }} onClick={onNavigate}><MessageCircle /> Message</Link></Button>
+        : state === 'incoming'
+          ? <Button variant="ink" size="sm" onClick={() => { actions.setConnection(personId, 'connected'); toast.success(`You and ${first} are now friends`); }}><Check /> Accept</Button>
+          : <Button variant={state === 'pending' ? 'soft' : 'ink'} size="sm" onClick={() => actions.setConnection(personId, state === 'pending' ? 'none' : 'pending')}>
+            {state === 'pending' ? <><Check /> Requested</> : <><UserPlus /> Connect</>}
+          </Button>}
+      <Button variant="soft" size="sm" asChild><Link to="/dashboard" search={{ view: 'profile', person: personId }} onClick={onNavigate}>View profile</Link></Button>
+    </motion.div>
+  </>;
 }
 
 const faceTones = ['#0F7A56', '#2563EB', '#B45309', '#BE123C', '#7C3AED', '#0E7490'];

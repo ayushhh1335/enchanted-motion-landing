@@ -57,7 +57,7 @@ export function useScrollMotion() {
     // Content height changes (images, filters, accordion) move every trigger below them.
     let refreshId = 0;
     const resizeWatch = new ResizeObserver(() => { clearTimeout(refreshId); refreshId = window.setTimeout(() => ScrollTrigger.refresh(), 200); });
-    const page = document.querySelector('.bj-page');
+    const page = document.querySelector('.bj-page, .lp-page');
     if (page) resizeWatch.observe(page);
 
     const ctx = gsap.context(() => {
@@ -113,8 +113,10 @@ export function useScrollMotion() {
       }));
 
       // Hero: copy drifts up faster than the product, which settles flat as you scroll.
-      gsap.to('.bj-copy', { yPercent: -14, ease: 'none', scrollTrigger: { trigger: '.bj-hero', start: 'top top', end: 'bottom top', scrub: true } });
-      gsap.to('.bj-app', { scale: 0.94, ease: 'none', scrollTrigger: { trigger: '.bj-hero', start: 'center center', end: 'bottom top', scrub: true } });
+      if (document.querySelector('.bj-hero')) {
+        gsap.to('.bj-copy', { yPercent: -14, ease: 'none', scrollTrigger: { trigger: '.bj-hero', start: 'top top', end: 'bottom top', scrub: true } });
+        gsap.to('.bj-app', { scale: 0.94, ease: 'none', scrollTrigger: { trigger: '.bj-hero', start: 'center center', end: 'bottom top', scrub: true } });
+      }
 
       // Campus film opens from a rounded inset to full bleed, while the picture eases back from a zoom.
       const film = { trigger: '.bj-film', start: 'top bottom', end: 'top top', scrub: true };
@@ -146,8 +148,8 @@ export function useScrollMotion() {
       });
 
       // Closing card grows to full width and rounds off as it arrives.
-      gsap.from('.bj-close', { scale: 0.9, borderRadius: 64, ease: 'none', scrollTrigger: { trigger: '.bj-close', start: 'top bottom', end: 'top 45%', scrub: true } });
-      gsap.from('.bj-wordmark span', { yPercent: 100, ease: 'none', stagger: 0.05, scrollTrigger: { trigger: '.bj-wordmark', start: 'top bottom', end: 'bottom bottom', scrub: true } });
+      if (document.querySelector('.bj-close')) gsap.from('.bj-close', { scale: 0.9, borderRadius: 64, ease: 'none', scrollTrigger: { trigger: '.bj-close', start: 'top bottom', end: 'top 45%', scrub: true } });
+      if (document.querySelector('.bj-wordmark')) gsap.from('.bj-wordmark span', { yPercent: 100, ease: 'none', stagger: 0.05, scrollTrigger: { trigger: '.bj-wordmark', start: 'top bottom', end: 'bottom bottom', scrub: true } });
 
       if (fine) {
         q('[data-magnetic]').forEach(el => {
@@ -173,18 +175,20 @@ export function useScrollMotion() {
       if (dead) return;
       ctx.add(() => {
         // autoSplit re-splits on resize; the returned tween's progress carries over to the new split.
-        SplitText.create('.bj-copy h1', {
-          type: 'lines,words', mask: 'lines', linesClass: 'sl', autoSplit: true,
-          onSplit: self => gsap.from(self.words, { yPercent: 115, rotate: 4, stagger: 0.07, duration: 1.2, ease: EASE, delay: 0.1 }),
-        });
-        gsap.timeline({ defaults: { ease: EASE, duration: 1.2 } })
-          .from('.bj-pill', { y: -14, autoAlpha: 0, duration: 0.8 })
-          .from('.bj-copy h1 em', { '--marker': 0, duration: 1, ease: 'power3.inOut' }, 0.75)
-          .from('.bj-lead, .bj-cta > *, .bj-social', { y: 22, autoAlpha: 0, stagger: 0.08 }, 0.5)
-          .from('.bj-app', { y: 90, rotationX: 16, autoAlpha: 0, duration: 1.6, transformPerspective: 1400 }, 0.25)
-          .from('.bj-scene', { scale: 0.4, autoAlpha: 0, duration: 1.6 }, 0.6)
-          .from('.bj-chip', { scale: 0.6, autoAlpha: 0, stagger: 0.15, ease: 'back.out(2)', duration: 0.8 }, 1)
-          .from('.bj-marquee', { autoAlpha: 0, y: 40, duration: 1 }, 0.9);
+        if (document.querySelector('.bj-hero')) {
+          SplitText.create('.bj-copy h1', {
+            type: 'lines,words', mask: 'lines', linesClass: 'sl', autoSplit: true,
+            onSplit: self => gsap.from(self.words, { yPercent: 115, rotate: 4, stagger: 0.07, duration: 1.2, ease: EASE, delay: 0.1 }),
+          });
+          gsap.timeline({ defaults: { ease: EASE, duration: 1.2 } })
+            .from('.bj-pill', { y: -14, autoAlpha: 0, duration: 0.8 })
+            .from('.bj-copy h1 em', { '--marker': 0, duration: 1, ease: 'power3.inOut' }, 0.75)
+            .from('.bj-lead, .bj-cta > *, .bj-social', { y: 22, autoAlpha: 0, stagger: 0.08 }, 0.5)
+            .from('.bj-app', { y: 90, rotationX: 16, autoAlpha: 0, duration: 1.6, transformPerspective: 1400 }, 0.25)
+            .from('.bj-scene', { scale: 0.4, autoAlpha: 0, duration: 1.6 }, 0.6)
+            .from('.bj-chip', { scale: 0.6, autoAlpha: 0, stagger: 0.15, ease: 'back.out(2)', duration: 0.8 }, 1)
+            .from('.bj-marquee', { autoAlpha: 0, y: 40, duration: 1 }, 0.9);
+        }
 
         q('.bj-page h2').forEach(h2 => SplitText.create(h2, {
           type: 'lines', mask: 'lines', linesClass: 'sl', autoSplit: true,

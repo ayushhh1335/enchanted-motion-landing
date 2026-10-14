@@ -125,7 +125,7 @@ export function PersonCVisionView({ personId }: { personId: string }) {
 
   return <div className="db-view cvp-view">
     <header className="cvp-bar">
-      <ProfileLink personId={person.id} className="db-icon-btn cvp-bar-back" aria-label={`Back to ${person.name}'s profile`}><ArrowLeft /></ProfileLink>
+      <ProfileLink personId={person.id} card={false} className="db-icon-btn cvp-bar-back" aria-label={`Back to ${person.name}'s profile`}><ArrowLeft /></ProfileLink>
       <div className="cvp-bar-id">
         <strong>{firstName(person)}’s CVision</strong>
         <small>{link.replace('https://', '')}</small>

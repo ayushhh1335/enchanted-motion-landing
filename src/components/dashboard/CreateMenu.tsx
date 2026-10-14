@@ -8,7 +8,7 @@ import { InviteDialog } from './home-widgets';
 import { usePhotoPicker } from './shared';
 import { useDashboard } from './store';
 
-/** Everything a student can start, shared by the sidebar and the top bar. */
+/** Everything a student can start, opened from the sidebar dock. */
 export function CreateMenu({ onCompose, children, side = 'bottom', align = 'end', onOpenChange }: {
   onCompose: () => void;
   children: ReactNode;

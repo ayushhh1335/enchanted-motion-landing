@@ -38,6 +38,6 @@ function SchoolAdminPage() {
   if (session?.role !== 'school') return null;
   return <SchoolProvider>
     <SchoolShell section={section ?? 'overview'} focus={focus} />
-    <Toaster position="top-center" richColors closeButton />
+    <Toaster />
   </SchoolProvider>;
 }

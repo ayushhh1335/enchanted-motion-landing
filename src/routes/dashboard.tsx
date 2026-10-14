@@ -42,6 +42,6 @@ function DashboardPage() {
   if (session?.role !== 'student') return null;
   return <DashboardProvider>
     <DashboardShell view={view ?? 'home'} chat={chat} tab={tab} person={person} />
-    <Toaster position="top-center" richColors closeButton />
+    <Toaster />
   </DashboardProvider>;
 }

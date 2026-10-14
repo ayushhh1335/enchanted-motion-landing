@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
-  ArrowRight, BadgeCheck, Bell, Bookmark, Check, ChevronRight, CircleHelp, FileUser, History, Lightbulb, ListChecks, LogOut, Menu, Palette, ReceiptText, Settings, Sparkles,
-  SquarePlus, UserPlus,
+  ArrowRight, BadgeCheck, Bell, Bookmark, Check, ChevronRight, CircleHelp, FileUser, History, Lightbulb, ListChecks, LogOut, Menu, Palette, Quote, ReceiptText, Settings,
+  Sparkles, SquarePlus, UserPlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { openQuoteOfTheDay } from '@/components/quote-of-the-day';
 import { LogoMark } from '@/components/site-chrome';
 import { ME_ID, isMajorMate, isSchoolmate, majorOf, me, people, personById } from '@/content/dashboard-data';
 import { signOutDemo } from '@/lib/demo-session';
@@ -165,6 +166,9 @@ function MoreMenu({ open, onOpenChange, active, completion }: { open: boolean; o
         <ViewLink view="settings" tab="activity" className="db-more-item" onClick={close}>
           <History /><span>My activity<small>Likes, comments, posts, and donations</small></span>
         </ViewLink>
+        <button type="button" className="db-more-item" onClick={() => { close(); openQuoteOfTheDay(); }}>
+          <Quote /><span>Quote of the day<small>A thought for today, picked by ByeUni</small></span>
+        </button>
         {completion < 100 ? <button type="button" className="db-more-item" onClick={() => { close(); setCompleting(true); }}>
           <ListChecks /><span>Complete your profile<small>{completion}% done</small></span>
         </button> : null}

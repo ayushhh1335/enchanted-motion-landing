@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { Bell, HandHeart, History, Home, LayoutDashboard, LogOut, Menu, Search, Settings, ShieldAlert, ShieldCheck, Users } from 'lucide-react';
+import { Bell, HandHeart, History, Home, LayoutDashboard, LogOut, Menu, Quote, Search, Settings, ShieldAlert, ShieldCheck, Users } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { ThemePicker } from '@/components/Appearance';
 import { ConsoleDock, type DockEntry } from '@/components/console-dock';
+import { QuoteOfTheDay, openQuoteOfTheDay } from '@/components/quote-of-the-day';
 import { LogoMark, Wordmark } from '@/components/site-chrome';
 import { adminProfile, coverSrc } from '@/content/admin-data';
 import { signOutDemo } from '@/lib/demo-session';
@@ -40,6 +41,7 @@ export function AdminShell({ section, focus }: { section: Section; focus?: strin
         <AdminNav active={section} onNavigate={() => setMenuOpen(false)} />
       </SheetContent>
     </Sheet>
+    <QuoteOfTheDay role="admin" />
   </div>;
 }
 
@@ -118,6 +120,7 @@ function AdminDock({ active }: { active: Section }) {
     extras={close => <>
       <SectionLink section="settings" className="db-more-item" onClick={close}><Settings /><span>Settings</span></SectionLink>
       <SectionLink section="settings" focus="activity" className="db-more-item" onClick={close}><History /><span>My activity</span></SectionLink>
+      <button type="button" className="db-more-item" onClick={() => { close(); openQuoteOfTheDay(); }}><Quote /><span>Quote of the day</span></button>
       <Link to="/" className="db-more-item" onClick={close}><Home /><span>ByeUni home page</span></Link>
       <button type="button" className="db-more-item" onClick={signOut}><LogOut /><span>Sign out</span></button>
     </>}

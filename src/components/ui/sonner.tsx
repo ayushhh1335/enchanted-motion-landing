@@ -1,23 +1,39 @@
-import { Toaster as Sonner } from "sonner";
+import { CircleAlert, CircleCheck, Info, LoaderCircle, TriangleAlert, X } from 'lucide-react';
+import { Toaster as Sonner, type ToasterProps } from 'sonner';
 
-type ToasterProps = React.ComponentProps<typeof Sonner>;
-
-const Toaster = ({ ...props }: ToasterProps) => {
-  return (
-    <Sonner
-      className="toaster group"
-      toastOptions={{
-        classNames: {
-          toast:
-            "group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",
-          description: "group-[.toast]:text-muted-foreground",
-          actionButton: "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
-          cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
-        },
-      }}
-      {...props}
-    />
-  );
-};
-
-export { Toaster };
+/**
+ * App toasts: solid cards in theme tones at the bottom center, clear of the top bar and the
+ * Messages pill, and lifted above the tab bar on phones.
+ */
+export function Toaster(props: ToasterProps) {
+  return <Sonner
+    position="bottom-center"
+    closeButton
+    visibleToasts={4}
+    gap={10}
+    offset={24}
+    mobileOffset={{ bottom: 'calc(80px + env(safe-area-inset-bottom))', left: 12, right: 12 }}
+    icons={{
+      success: <CircleCheck />,
+      error: <CircleAlert />,
+      warning: <TriangleAlert />,
+      info: <Info />,
+      loading: <LoaderCircle className="bu-toast-spin" />,
+      close: <X />,
+    }}
+    toastOptions={{
+      unstyled: true,
+      classNames: {
+        toast: 'bu-toast',
+        content: 'bu-toast-content',
+        title: 'bu-toast-title',
+        description: 'bu-toast-desc',
+        icon: 'bu-toast-icon',
+        closeButton: 'bu-toast-close',
+        actionButton: 'bu-toast-action',
+        cancelButton: 'bu-toast-cancel',
+      },
+    }}
+    {...props}
+  />;
+}

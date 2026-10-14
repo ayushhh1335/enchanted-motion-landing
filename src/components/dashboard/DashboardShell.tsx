@@ -1,26 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import {
-  ArrowUpRight, Bell, CalendarDays, HandHeart, Home, LogOut, Menu, MessageCircle, Plus, PlusCircle, Search, Settings, Sparkles, Users, UsersRound, X,
+  ArrowUpRight, Bell, CalendarDays, HandHeart, Home, LogOut, Menu, MessageCircle, Plus, Search, Settings, Sparkles, Users, UsersRound, X,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { PlaceholdersAndVanishInput } from '@/components/ui/placeholders-and-vanish-input';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { ThemePicker } from '@/components/Appearance';
+import { QuoteOfTheDay } from '@/components/quote-of-the-day';
 import { LogoMark, Wordmark } from '@/components/site-chrome';
 import { signOutDemo } from '@/lib/demo-session';
 import { ME_ID, isSchoolmate, majorOf, me, people } from '@/content/dashboard-data';
 import { cn } from '@/lib/utils';
-import { CreateMenu } from './CreateMenu';
 import { Composer, Feed } from './Feed';
 import { CVisionPromo, DashFooter, LeftRail, ProfileCard, RightRail, SideNav } from './Rails';
 import { MessagesDock } from './MessagesDock';
 import { NotificationsPanel } from './NotificationsPanel';
 import { StoriesRail } from './Stories';
-import { SchoolUpdates, VibeCheck } from './home-widgets';
+import { SchoolBadge, SchoolUpdates, StudentOfTheDay, VibeCheck } from './home-widgets';
 import { Avatar, ViewLink, accountItems, compact, faceTone, initials, isAccountTab, isSettingsSection, type View } from './shared';
 import { useDashboard } from './store';
 import {
@@ -51,7 +51,7 @@ export function DashboardShell({ view, chat, tab, person }: { view: View; chat?:
 
   return <div className="db-page has-dock">
     <div className="db-aurora" aria-hidden="true"><span /><span /><span /><span /></div>
-    <TopBar onMenu={() => setMenuOpen(true)} onCompose={openCompose} noticesOpen={noticesOpen} onNotices={setNoticesOpen} />
+    <TopBar onMenu={() => setMenuOpen(true)} noticesOpen={noticesOpen} onNotices={setNoticesOpen} />
     <LeftRail active={view} onCompose={openCompose} noticesOpen={noticesOpen} onNotices={setNoticesOpen} />
     <NotificationsPanel open={noticesOpen} onClose={() => setNoticesOpen(false)} />
     <div className={cn('db-layout', !withRail.includes(view) && 'is-wide', view === 'messages' && 'is-messages')}>
@@ -81,6 +81,7 @@ export function DashboardShell({ view, chat, tab, person }: { view: View; chat?:
         <Composer autoFocus onDone={() => setComposeOpen(false)} />
       </DialogContent>
     </Dialog>
+    <QuoteOfTheDay role="student" />
   </div>;
 }
 
@@ -102,13 +103,14 @@ function ActiveView({ view, chat, tab, person }: { view: View; chat?: string | u
     default: return <>
       <StoriesRail />
       <VibeCheck />
+      <StudentOfTheDay />
       <div className="db-mobile-only"><SchoolUpdates /></div>
       <Feed />
     </>;
   }
 }
 
-function TopBar({ onMenu, onCompose, noticesOpen, onNotices }: { onMenu: () => void; onCompose: () => void; noticesOpen: boolean; onNotices: (open: boolean) => void }) {
+function TopBar({ onMenu, noticesOpen, onNotices }: { onMenu: () => void; noticesOpen: boolean; onNotices: (open: boolean) => void }) {
   const { chats, notices, vibeys } = useDashboard();
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
@@ -129,12 +131,13 @@ function TopBar({ onMenu, onCompose, noticesOpen, onNotices }: { onMenu: () => v
 
   return <header className={cn('db-top', scrolled && 'is-scrolled')}>
     <button type="button" className="db-icon-btn db-menu-btn" aria-label="Open menu" onClick={onMenu}><Menu /></button>
-    <ViewLink view="home" className="bj-logo db-logo" aria-label="ByeUni home feed"><LogoMark /><Wordmark /></ViewLink>
+    <div className="db-brand">
+      <ViewLink view="home" className="bj-logo db-logo" aria-label="ByeUni home feed"><LogoMark /><Wordmark /></ViewLink>
+      <i className="db-brand-sep" aria-hidden="true" />
+      <SchoolBadge />
+    </div>
     <GlobalSearch />
     <div className="db-top-actions">
-      <CreateMenu onCompose={onCompose}>
-        <Button variant="ink" className="db-create"><PlusCircle /><span>Create</span></Button>
-      </CreateMenu>
       <ViewLink view="vibeys" className="db-top-vibeys" aria-label={`${vibeys.balance} Vibeys`}>
         <Sparkles /><b>{compact(vibeys.balance)}</b>
       </ViewLink>
@@ -173,6 +176,14 @@ function TopBar({ onMenu, onCompose, noticesOpen, onNotices }: { onMenu: () => v
 }
 
 type SearchHit = { id: string; label: string; meta: string; image: string; view: View; icon?: typeof Home };
+
+const searchHints = [
+  'Search students, forums, campaigns…',
+  'Try “Chloe” or “Data Science”',
+  'Find a forum like Robotics Club',
+  'Look up a campaign to support',
+  'Jump to settings, like “Payments”',
+];
 
 function GlobalSearch() {
   const { communities, campaigns } = useDashboard();
@@ -230,19 +241,24 @@ function GlobalSearch() {
 
   return <div className={cn('db-search', focused && 'is-focused')}>
     <Search aria-hidden="true" />
-    <input
+    <PlaceholdersAndVanishInput
       ref={input}
+      placeholders={searchHints}
       value={query}
-      onChange={event => setQuery(event.target.value)}
+      onValueChange={setQuery}
+      onSubmit={() => {
+        const hit = hits[active];
+        if (!hit) return false;
+        go(hit);
+        return true;
+      }}
       onFocus={() => setFocused(true)}
       onBlur={() => window.setTimeout(() => setFocused(false), 150)}
       onKeyDown={event => {
         if (event.key === 'ArrowDown') { event.preventDefault(); setActive(i => Math.min(i + 1, hits.length - 1)); }
         else if (event.key === 'ArrowUp') { event.preventDefault(); setActive(i => Math.max(i - 1, 0)); }
-        else if (event.key === 'Enter' && hits[active]) go(hits[active]);
         else if (event.key === 'Escape') { setQuery(''); input.current?.blur(); }
       }}
-      placeholder="Search students, forums, campaigns…"
       aria-label="Search ByeUni"
       role="combobox"
       aria-expanded={focused}

@@ -2,7 +2,7 @@ import { useRef, type ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
 import { formatDistanceToNowStrict } from 'date-fns';
 import {
-  Bell, BookUser, Bookmark, CalendarDays, FileUser, HandHeart, Home, MessageCircle, ReceiptText, Settings, ShieldCheck, Sparkles, UserRound,
+  Bell, BookUser, Bookmark, CalendarDays, FileUser, HandHeart, Home, Lightbulb, MessageCircle, ReceiptText, Settings, ShieldCheck, Sparkles, UserRound,
   Users, UsersRound, Wallet,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -10,7 +10,7 @@ import { imageFileToDataUrl } from '@/lib/image-file';
 import { ME_ID, type Person } from '@/content/dashboard-data';
 import { cn } from '@/lib/utils';
 
-export const views = ['home', 'network', 'messages', 'communities', 'campaigns', 'events', 'vibeys', 'cvision', 'saved', 'notifications', 'profile', 'account', 'settings'] as const;
+export const views = ['home', 'network', 'messages', 'communities', 'campaigns', 'events', 'vibeys', 'cvision', 'saved', 'suggestions', 'notifications', 'profile', 'account', 'settings'] as const;
 export type View = (typeof views)[number];
 export const isView = (value: unknown): value is View => typeof value === 'string' && (views as readonly string[]).includes(value);
 
@@ -25,7 +25,7 @@ export const accountItems: { tab: AccountTab; label: string; note: string; icon:
   { tab: 'payments', label: 'Payments', note: 'Donations made, received, autopays', icon: ReceiptText },
 ];
 
-export const settingsTabs = ['appearance', 'notifications', 'privacy'] as const;
+export const settingsTabs = ['activity', 'appearance', 'notifications', 'privacy'] as const;
 export type SettingsTab = (typeof settingsTabs)[number];
 export const isSettingsTab = (value: unknown): value is SettingsTab => typeof value === 'string' && (settingsTabs as readonly string[]).includes(value);
 /** Every panel the Settings page can open, including the Accounts Center sections. */
@@ -42,6 +42,7 @@ export const navItems: { view: View; label: string; icon: typeof Home }[] = [
   { view: 'vibeys', label: 'My Vibeys', icon: Sparkles },
   { view: 'cvision', label: 'CVision', icon: FileUser },
   { view: 'saved', label: 'Saved', icon: Bookmark },
+  { view: 'suggestions', label: 'Suggestions', icon: Lightbulb },
   { view: 'notifications', label: 'Notifications', icon: Bell },
   { view: 'profile', label: 'Profile', icon: UserRound },
   { view: 'settings', label: 'Settings', icon: Settings },

@@ -1,34 +1,32 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { Banknote, Bell, HandHeart, Home, LayoutDashboard, LogOut, Menu, Search, Settings, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { Bell, HandHeart, History, Home, LayoutDashboard, LogOut, Menu, Search, Settings, ShieldAlert, ShieldCheck, Users } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { ThemePicker } from '@/components/Appearance';
+import { ConsoleDock, type DockEntry } from '@/components/console-dock';
 import { LogoMark, Wordmark } from '@/components/site-chrome';
 import { adminProfile, coverSrc } from '@/content/admin-data';
 import { signOutDemo } from '@/lib/demo-session';
 import { cn } from '@/lib/utils';
 import { useAdmin } from './store';
-import { Face, SectionLink, navGroups, userPhoto, type Section } from './ui';
+import { Face, SectionLink, canonicalSection, navGroups, userPhoto, type Section } from './ui';
 import { OverviewView } from './views-overview';
 import { CampaignsView, PaymentsView, WithdrawalsView } from './views-fundraising';
-import { SchoolsView, UsersView } from './views-people';
+import { SchoolsView, StudentProfileView, UsersView } from './views-people';
 import { ModerationView, SafetyView } from './views-trust';
 import { LibraryView, SettingsView, VibeysView } from './views-platform';
 
 export function AdminShell({ section, focus }: { section: Section; focus?: string | undefined }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  return <div className="db-page adm-page">
+  return <div className="db-page adm-page has-dock">
     <div className="db-aurora" aria-hidden="true"><span /><span /><span /><span /></div>
     <TopBar onMenu={() => setMenuOpen(true)} />
+    <AdminDock active={section} />
     <div className="db-layout is-wide">
-      <aside className="db-left" aria-label="Admin navigation">
-        <AdminCard />
-        <AdminNav active={section} />
-      </aside>
       <main className="db-main" id="main">
         <ActiveSection section={section} focus={focus} />
       </main>
@@ -47,16 +45,33 @@ export function AdminShell({ section, focus }: { section: Section; focus?: strin
 
 function ActiveSection({ section, focus }: { section: Section; focus?: string | undefined }) {
   switch (section) {
+    case 'emails': return <SettingsView pane="emails" />;
     case 'campaigns': return <CampaignsView focus={focus} />;
-    case 'withdrawals': return <WithdrawalsView />;
-    case 'payments': return <PaymentsView />;
+    case 'fundraisers':
     case 'users': return <UsersView focus={focus} />;
-    case 'schools': return <SchoolsView focus={focus} />;
-    case 'moderation': return <ModerationView />;
-    case 'safety': return <SafetyView />;
+    case 'student': return <StudentProfileView key={focus} userId={focus} />;
+    case 'categories': return <LibraryView pane="categories" />;
+    case 'schools': return <SchoolsView focus={focus} pane="schools" />;
+    case 'majors': return <LibraryView pane="majors" />;
+    case 'quotes': return <LibraryView pane="quotes" />;
+    case 'ecards': return <LibraryView pane="ecards" />;
+    case 'reports':
+    case 'payments': return <PaymentsView />;
+    case 'withdrawals': return <WithdrawalsView />;
+    case 'forums': return <ModerationView pane="forums" />;
+    case 'rewards': return <VibeysView pane="rewards" />;
+    case 'actions': return <VibeysView pane="actions" />;
+    case 'contest': return <VibeysView pane="contest" />;
+    case 'abuse': return <SafetyView pane="abuse" />;
+    case 'config': return <SettingsView pane="system" />;
+    case 'vibe':
+    case 'safety': return <SafetyView pane="vibe" />;
+    case 'reported':
+    case 'moderation': return <ModerationView pane="reported" />;
+    case 'school-admins': return <SchoolsView pane="admins" />;
     case 'vibeys': return <VibeysView />;
     case 'library': return <LibraryView />;
-    case 'settings': return <SettingsView />;
+    case 'settings': return <SettingsView tab={focus} />;
     default: return <OverviewView />;
   }
 }
@@ -74,15 +89,52 @@ function AdminCard() {
   </section>;
 }
 
+const dockSections: Section[] = ['overview', 'campaigns', 'fundraisers', 'schools', 'reported', 'vibe', 'withdrawals', 'rewards'];
+
+function AdminDock({ active }: { active: Section }) {
+  const { counts } = useAdmin();
+  const navigate = useNavigate();
+  const current = canonicalSection(active);
+  const open = counts.withdrawals + counts.reports + counts.flags + counts.redemptions + counts.contests;
+  const toEntry = (item: (typeof navGroups)[number]['items'][number]): DockEntry => ({ id: item.section, label: item.label, icon: item.icon, count: item.count ? counts[item.count] : 0 });
+  const all = navGroups.flatMap(group => group.items);
+  const dock = dockSections.flatMap(section => all.filter(item => item.section === section)).map(toEntry);
+
+  function signOut() {
+    signOutDemo();
+    navigate({ to: '/login' });
+  }
+
+  return <ConsoleDock
+    label="Admin navigation"
+    active={current}
+    dock={dock}
+    groups={navGroups.map(group => ({ label: group.label, items: group.items.map(toEntry) }))}
+    renderLink={(entry, props) => <SectionLink section={entry.id as Section} {...props} />}
+    me={<SectionLink section="settings" className={cn('db-dock-item db-dock-me', current === 'settings' && 'is-active')} aria-current={current === 'settings' ? 'page' : undefined}>
+      <Face name={adminProfile.name} photo={adminProfile.photo} size={28} />
+      <span><strong>{adminProfile.name}</strong><small>{open ? `${open} open item${open === 1 ? '' : 's'}` : 'Platform admin'}</small></span>
+    </SectionLink>}
+    extras={close => <>
+      <SectionLink section="settings" className="db-more-item" onClick={close}><Settings /><span>Settings</span></SectionLink>
+      <SectionLink section="settings" focus="activity" className="db-more-item" onClick={close}><History /><span>My activity</span></SectionLink>
+      <Link to="/" className="db-more-item" onClick={close}><Home /><span>ByeUni home page</span></Link>
+      <button type="button" className="db-more-item" onClick={signOut}><LogOut /><span>Sign out</span></button>
+    </>}
+  />;
+}
+
 function AdminNav({ active, onNavigate }: { active: Section; onNavigate?: () => void }) {
   const { counts } = useAdmin();
+  const current = canonicalSection(active);
   return <nav className="db-panel db-nav-panel adm-nav" aria-label="Admin sections">
     {navGroups.map(group => <div key={group.label} className="adm-nav-group">
       <small>{group.label}</small>
       <div className="db-nav">
         {group.items.map(item => {
-          const count = item.count ? counts[item.count] + (item.count === 'redemptions' ? counts.contests : 0) : 0;
-          return <SectionLink key={item.section} section={item.section} className={cn('db-nav-item', active === item.section && 'is-active')} aria-current={active === item.section ? 'page' : undefined} onClick={onNavigate}>
+          const count = item.count ? counts[item.count] : 0;
+          const on = current === item.section;
+          return <SectionLink key={item.section} section={item.section} className={cn('db-nav-item', on && 'is-active')} aria-current={on ? 'page' : undefined} onClick={onNavigate}>
             <item.icon /><span>{item.label}</span>{count ? <em>{count}</em> : null}
           </SectionLink>;
         })}
@@ -96,10 +148,10 @@ function TopBar({ onMenu }: { onMenu: () => void }) {
   const navigate = useNavigate();
   const total = counts.withdrawals + counts.reports + counts.flags + counts.redemptions + counts.contests;
   const items = [
-    ...flags.filter(f => f.status === 'open').map(f => ({ id: f.id, at: f.at, section: 'safety' as const, urgent: f.category === 'suicidal', user: f.userId, text: f.category === 'suicidal' ? 'Wellbeing flag needs a check-in' : `Language flag on a ${f.where.toLowerCase()}` })),
+    ...flags.filter(f => f.status === 'open').map(f => ({ id: f.id, at: f.at, section: 'vibe' as const, urgent: f.category === 'suicidal', user: f.userId, text: f.category === 'suicidal' ? 'Wellbeing flag needs a check-in' : `Language flag on a ${f.where.toLowerCase()}` })),
     ...withdrawals.filter(w => w.status === 'pending').map(w => ({ id: w.id, at: w.requestedAt, section: 'withdrawals' as const, urgent: false, user: w.requesterId, text: `Withdrawal request · $${w.amount.toFixed(2)}` })),
-    ...reports.filter(r => r.status === 'open').map(r => ({ id: r.id, at: r.at, section: 'moderation' as const, urgent: false, user: r.authorId, text: `${r.kind[0]?.toUpperCase()}${r.kind.slice(1)} reported: ${r.reason}` })),
-    ...redemptions.filter(r => r.status === 'requested').map(r => ({ id: r.id, at: r.at, section: 'vibeys' as const, urgent: false, user: r.userId, text: `Redeemed ${lookups.rewards.get(r.rewardId)?.name ?? 'a reward'}` })),
+    ...reports.filter(r => r.status === 'open').map(r => ({ id: r.id, at: r.at, section: 'reported' as const, urgent: false, user: r.authorId, text: `${r.kind[0]?.toUpperCase()}${r.kind.slice(1)} reported: ${r.reason}` })),
+    ...redemptions.filter(r => r.status === 'requested').map(r => ({ id: r.id, at: r.at, section: 'rewards' as const, urgent: false, user: r.userId, text: `Redeemed ${lookups.rewards.get(r.rewardId)?.name ?? 'a reward'}` })),
   ].sort((a, b) => Number(b.urgent) - Number(a.urgent) || b.at - a.at).slice(0, 7);
 
   function signOut() {
@@ -138,6 +190,7 @@ function TopBar({ onMenu }: { onMenu: () => void }) {
           <DropdownMenuLabel><strong>{adminProfile.name}</strong><small>{adminProfile.title}</small></DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild><SectionLink section="settings"><Settings />Settings</SectionLink></DropdownMenuItem>
+          <DropdownMenuItem asChild><SectionLink section="settings" focus="activity"><History />My activity</SectionLink></DropdownMenuItem>
           <DropdownMenuItem asChild><Link to="/"><Home />ByeUni home page</Link></DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={signOut}><LogOut />Sign out</DropdownMenuItem>
@@ -157,7 +210,7 @@ function AdminSearch() {
     if (!q) return [];
     const found: { id: string; label: string; meta: string; image?: string | undefined; name: string; section: Section }[] = [];
     users.filter(u => `${u.name} ${u.email}`.toLowerCase().includes(q))
-      .forEach(u => found.push({ id: u.id, label: u.name, meta: `${u.type === 'guest' ? 'Guest' : u.type === 'team' ? 'Team member' : 'Student'} · ${u.email}`, image: userPhoto(u), name: u.name, section: 'users' }));
+      .forEach(u => found.push({ id: u.id, label: u.name, meta: `${u.type === 'guest' ? 'Guest' : u.type === 'team' ? 'Team member' : 'Fundraiser'} · ${u.email}`, image: userPhoto(u), name: u.name, section: u.type === 'fundraiser' ? 'student' : 'fundraisers' }));
     campaigns.filter(c => c.title.toLowerCase().includes(q))
       .forEach(c => found.push({ id: c.id, label: c.title, meta: `Campaign · ${c.category}`, image: coverSrc(c.cover), name: c.title, section: 'campaigns' }));
     schools.filter(s => `${s.name} ${s.short}`.toLowerCase().includes(q))
@@ -202,11 +255,11 @@ function BottomNav({ section, onMenu }: { section: Section; onMenu: () => void }
   const items: { section: Section; label: string; icon: typeof Home; count?: number }[] = [
     { section: 'overview', label: 'Home', icon: LayoutDashboard },
     { section: 'campaigns', label: 'Campaigns', icon: HandHeart },
-    { section: 'withdrawals', label: 'Payouts', icon: Banknote, count: counts.withdrawals },
-    { section: 'moderation', label: 'Reports', icon: ShieldAlert, count: counts.reports + counts.flags },
+    { section: 'fundraisers', label: 'People', icon: Users },
+    { section: 'reported', label: 'Reports', icon: ShieldAlert, count: counts.reports + counts.flags },
   ];
   return <nav className="db-bottom" aria-label="Admin primary">
-    {items.map(item => <SectionLink key={item.section} section={item.section} className={cn('db-tab adm-tab', section === item.section && 'is-active')} aria-current={section === item.section ? 'page' : undefined}>
+    {items.map(item => <SectionLink key={item.section} section={item.section} className={cn('db-tab adm-tab', canonicalSection(section) === item.section && 'is-active')} aria-current={canonicalSection(section) === item.section ? 'page' : undefined}>
       <item.icon /><span>{item.label}</span>{item.count ? <em>{item.count}</em> : null}
     </SectionLink>)}
     <button type="button" className="db-tab" onClick={onMenu}><Menu /><span>More</span></button>

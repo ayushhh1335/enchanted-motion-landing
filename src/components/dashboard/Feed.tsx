@@ -13,7 +13,7 @@ import {
 import { ME_ID, me, personById, type Audience, type PostKind } from '@/content/dashboard-data';
 import { cn } from '@/lib/utils';
 import { CampaignDialog } from './dialogs';
-import { FriendsCarousel, InvitePromo, StudentOfTheDay } from './home-widgets';
+import { FriendsCarousel, InvitePromo } from './home-widgets';
 import { VibeysMini } from './Rails';
 import { Avatar, EmptyState, ProfileLink, timeAgo, usePhotoPicker } from './shared';
 import { useDashboard, type FeedPost } from './store';
@@ -222,7 +222,6 @@ export function Feed() {
     {shown.length === 0 ? <EmptyState icon={Lock} title="Nothing here yet" body="Posts from this group will show up here." /> : null}
     {shown.map((post, i) => <div key={post.id} className="db-feed-item">
       <PostCard post={post} />
-      {i === 0 ? <div className="db-mobile-only"><StudentOfTheDay /></div> : null}
       {i === 1 ? <FriendsCarousel kind="school" /> : null}
       {i === 2 ? <div className="db-mobile-only db-feed-promos"><VibeysMini /><InvitePromo /></div> : null}
       {i === 3 ? <FriendsCarousel kind="major" /> : null}

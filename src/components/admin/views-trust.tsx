@@ -1,11 +1,11 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Ban, CheckCircle2, Flag as FlagIcon, HeartHandshake, HeartPulse, Lock, MessageSquare, Plus, RotateCcw, ShieldCheck, Trash2, UserRound, Users, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { agoText } from '@/components/dashboard/shared';
 import type { Flag, Report, ReportKind, WordCategory } from '@/content/admin-data';
 import { cn } from '@/lib/utils';
 import { useAdmin } from './store';
-import { AdminTabs, Empty, PageHead, Pill, UserCell, day } from './ui';
+import { AdminTabs, Empty, PageHead, Pill, UserLink, day } from './ui';
 
 const kindMeta: Record<ReportKind, { label: string; icon: typeof Users; remove: string }> = {
   forum: { label: 'Forum', icon: Users, remove: 'Remove forum' },
@@ -16,18 +16,23 @@ const kindMeta: Record<ReportKind, { label: string; icon: typeof Users; remove: 
 
 type ModerationTab = 'open' | 'forums' | 'closed';
 
-export function ModerationView() {
+export function ModerationView({ pane }: { pane?: 'forums' | 'reported' | undefined }) {
   const { reports, forums, lookups, actions } = useAdmin();
-  const [tab, setTab] = useState<ModerationTab>('open');
+  const [tab, setTab] = useState<ModerationTab>(pane === 'forums' ? 'forums' : 'open');
+  useEffect(() => { if (pane) setTab(pane === 'forums' ? 'forums' : 'open'); }, [pane]);
   const open = reports.filter(r => r.status === 'open').sort((a, b) => b.at - a.at);
   const closed = reports.filter(r => r.status !== 'open').sort((a, b) => b.at - a.at);
   const repeat = (authorId: string) => reports.filter(r => r.authorId === authorId).length;
+  const title = pane === 'forums' ? 'Forums' : 'Reported forums, comments & users';
+  const subtitle = pane === 'forums'
+    ? 'Forums students created, including private ones. Remove a forum to take it offline.'
+    : 'Forums, comments, campaigns, and people reported by the community.';
 
   return <section className="db-view">
-    <PageHead title="Reports" subtitle="Forums, comments, campaigns, and people reported by the community." />
-    <AdminTabs label="Reports" value={tab} onChange={setTab} items={[
-      { value: 'open', label: 'Needs review', count: open.length }, { value: 'forums', label: `Forums ${forums.length}` }, { value: 'closed', label: `Resolved ${closed.length}` },
-    ]} />
+    <PageHead title={title} subtitle={subtitle} />
+    {pane === 'forums' ? null : <AdminTabs label="Reported content" value={tab === 'forums' ? 'open' : tab} onChange={setTab} items={[
+      { value: 'open', label: 'Needs review', count: open.length }, { value: 'closed', label: `Resolved ${closed.length}` },
+    ]} />}
 
     {tab === 'open' ? <div className="adm-cards">
       {open.map(report => <ReportCard key={report.id} report={report} repeatCount={repeat(report.authorId)}>
@@ -54,7 +59,7 @@ export function ModerationView() {
               const flagged = reports.some(r => r.targetId === f.id && r.status === 'open');
               return <tr key={f.id}>
                 <td data-label="Forum"><strong className="adm-forum-title">{f.isPrivate ? <Lock /> : null}{f.title}</strong></td>
-                <td data-label="Created by"><UserCell user={lookups.users.get(f.ownerId)} /></td>
+                <td data-label="Created by"><UserLink user={lookups.users.get(f.ownerId)} /></td>
                 <td data-label="Members" className="adm-num">{f.members.toLocaleString('en-US')}</td>
                 <td data-label="Posts" className="adm-num">{f.posts}</td>
                 <td data-label="Created">{day(f.createdAt)}</td>
@@ -85,7 +90,7 @@ function ReportCard({ report, repeatCount, children }: { report: Report; repeatC
     {target ? <strong className="adm-report-target">{target}</strong> : null}
     <blockquote>{report.excerpt}</blockquote>
     <div className="adm-report-people">
-      <UserCell user={lookups.users.get(report.authorId)} meta={repeatCount > 1 ? <span className="adm-warn">{repeatCount} reports on this person</span> : 'Author'} />
+      <UserLink user={lookups.users.get(report.authorId)} meta={repeatCount > 1 ? <span className="adm-warn">{repeatCount} reports on this person</span> : 'Author'} />
       <small>Reported by <b>{lookups.users.get(report.reporterId)?.name ?? 'a student'}</b></small>
     </div>
     <footer>{children}</footer>
@@ -100,19 +105,24 @@ function Highlight({ text, word }: { text: string; word: string }) {
 
 type SafetyTab = 'open' | 'words' | 'reviewed';
 
-export function SafetyView() {
-  const { flags, words, actions } = useAdmin();
-  const [tab, setTab] = useState<SafetyTab>('open');
+export function SafetyView({ pane }: { pane?: 'abuse' | 'vibe' | undefined }) {
+  const { flags, actions } = useAdmin();
+  const [tab, setTab] = useState<SafetyTab>(pane === 'abuse' ? 'words' : 'open');
+  useEffect(() => { if (pane) setTab(pane === 'abuse' ? 'words' : 'open'); }, [pane]);
   const open = flags.filter(f => f.status === 'open').sort((a, b) => Number(b.category === 'suicidal') - Number(a.category === 'suicidal') || b.at - a.at);
   const reviewed = flags.filter(f => f.status !== 'open').sort((a, b) => b.at - a.at);
   const urgent = open.filter(f => f.category === 'suicidal').length;
+  const title = pane === 'abuse' ? 'Report / Site Abuse' : 'Vibe-Check';
+  const subtitle = pane === 'abuse'
+    ? 'Suicidal phrases and bad words. Wellbeing matches go to a person; language matches can be removed.'
+    : 'Posts, comments, forums, and chats that matched a watch word.';
 
   return <section className="db-view">
-    <PageHead title="Vibe-check" subtitle="Posts, comments, forums, and chats that matched a watch word." />
-    {urgent ? <p className="adm-callout is-rose"><HeartPulse /> {urgent} wellbeing flag{urgent > 1 ? 's need' : ' needs'} a human check-in. Send support resources (988 Suicide &amp; Crisis Lifeline) before anything else.</p> : null}
-    <AdminTabs label="Vibe-check" value={tab} onChange={setTab} items={[
-      { value: 'open', label: 'Flagged', count: open.length }, { value: 'words', label: `Watch words ${words.length}` }, { value: 'reviewed', label: `Reviewed ${reviewed.length}` },
-    ]} />
+    <PageHead title={title} subtitle={subtitle} />
+    {pane !== 'abuse' && urgent ? <p className="adm-callout is-rose"><HeartPulse /> {urgent} wellbeing flag{urgent > 1 ? 's need' : ' needs'} a human check-in. Send support resources (988 Suicide &amp; Crisis Lifeline) before anything else.</p> : null}
+    {pane === 'abuse' ? null : <AdminTabs label="Vibe-check" value={tab === 'words' ? 'open' : tab} onChange={setTab} items={[
+      { value: 'open', label: 'Flagged', count: open.length }, { value: 'reviewed', label: `Reviewed ${reviewed.length}` },
+    ]} />}
 
     {tab === 'open' || tab === 'reviewed' ? <div className="adm-cards">
       {(tab === 'open' ? open : reviewed).map(flag => <FlagCard key={flag.id} flag={flag}>
@@ -147,7 +157,7 @@ function FlagCard({ flag, children }: { flag: Flag; children: ReactNode }) {
       <small>{agoText(flag.at)}</small>
     </header>
     <blockquote><Highlight text={flag.text} word={flag.word} /></blockquote>
-    <div className="adm-report-people"><UserCell user={lookups.users.get(flag.userId)} meta={`Matched “${flag.word}”`} /></div>
+    <div className="adm-report-people"><UserLink user={lookups.users.get(flag.userId)} meta={`Matched “${flag.word}”`} /></div>
     <footer>{children}</footer>
   </article>;
 }

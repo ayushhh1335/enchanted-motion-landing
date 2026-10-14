@@ -51,10 +51,10 @@ export function OverviewView() {
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
   const queue: { section: Section; label: string; count: number; icon: typeof Users; tone: 'mint' | 'sky' | 'sun' | 'rose'; note: string }[] = [
-    { section: 'safety', label: 'Wellbeing flags', count: counts.urgentFlags, icon: HeartPulse, tone: 'rose', note: 'Reach out first' },
+    { section: 'vibe', label: 'Wellbeing flags', count: counts.urgentFlags, icon: HeartPulse, tone: 'rose', note: 'Reach out first' },
     { section: 'withdrawals', label: 'Withdrawals to review', count: counts.withdrawals, icon: Banknote, tone: 'mint', note: dollars(withdrawals.filter(w => w.status === 'pending').reduce((n, w) => n + w.amount, 0)) + ' requested' },
-    { section: 'moderation', label: 'Open reports', count: counts.reports, icon: ShieldAlert, tone: 'sun', note: 'Forums, comments, users' },
-    { section: 'vibeys', label: 'Reward requests', count: counts.redemptions + counts.contests, icon: Sparkles, tone: 'sky', note: counts.contests ? `${counts.contests} contest needs a winner` : 'Coupons to send' },
+    { section: 'reported', label: 'Open reports', count: counts.reports, icon: ShieldAlert, tone: 'sun', note: 'Forums, comments, users' },
+    { section: 'rewards', label: 'Reward requests', count: counts.redemptions + counts.contests, icon: Sparkles, tone: 'sky', note: counts.contests ? `${counts.contests} contest needs a winner` : 'Coupons to send' },
   ];
 
   return <section className="db-view">
@@ -84,7 +84,7 @@ export function OverviewView() {
 
     <div className="adm-grid-2">
       <article className="db-panel adm-chart">
-        <PanelHead title="Donations, last 6 months" action={<SectionLink section="payments" className="db-link">Transactions</SectionLink>} />
+        <PanelHead title="Donations, last 6 months" action={<SectionLink section="reports" className="db-link">Reports</SectionLink>} />
         <div className="adm-chart-total">
           <strong>{dollars(chart.reduce((n, m) => n + m.amount, 0))}</strong>
           <span>{chart.reduce((n, m) => n + m.gifts, 0)} gifts</span>
@@ -151,7 +151,7 @@ export function OverviewView() {
       </article>
 
       <article className="db-panel">
-        <PanelHead title="Admin activity" />
+        <PanelHead title="Admin activity" action={<SectionLink section="settings" focus="activity" className="db-link">See all</SectionLink>} />
         <ul className="adm-audit">
           {audit.slice(0, 7).map(entry => <li key={entry.id}>
             <i className={`is-${entry.tone}`} />

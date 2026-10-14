@@ -1,44 +1,42 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { Bell, Flag, GraduationCap, HandHeart, Home, LayoutDashboard, LogOut, Menu, School, Search, UserCog } from 'lucide-react';
+import { Bell, Flag, GraduationCap, HandHeart, History, Home, LayoutDashboard, LogOut, Menu, School, Search, UserCog } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { ThemePicker } from '@/components/Appearance';
+import { ConsoleDock, type DockEntry } from '@/components/console-dock';
 import { LogoMark, Wordmark } from '@/components/site-chrome';
 import { coverSrc } from '@/content/admin-data';
 import { signOutDemo } from '@/lib/demo-session';
 import { cn } from '@/lib/utils';
 import { Face, userPhoto } from '@/components/admin/ui';
 import { useSchool } from './store';
-import { SchoolLink, navGroups, schoolGradient, type Section } from './ui';
+import { SchoolLink, navGroups, navSection, schoolGradient, type Section } from './ui';
 import { ProfileView, OverviewView, SchoolDetailsView } from './views-home';
-import { CampaignsView, StudentsView } from './views-students';
+import { CampaignsView, StudentProfileView, StudentsView } from './views-students';
 import { ForumsView, ReportsView, SuggestionsView, UpdatesView } from './views-community';
 
 export function SchoolShell({ section, focus }: { section: Section; focus?: string | undefined }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  return <div className="db-page adm-page sch-page">
+  return <div className="db-page adm-page sch-page has-dock">
     <div className="db-aurora" aria-hidden="true"><span /><span /><span /><span /></div>
     <TopBar onMenu={() => setMenuOpen(true)} />
+    <SchoolDock active={navSection(section)} />
     <div className="db-layout is-wide">
-      <aside className="db-left" aria-label="School navigation">
-        <SchoolCard />
-        <SchoolNav active={section} />
-      </aside>
       <main className="db-main" id="main">
         <ActiveSection section={section} focus={focus} />
       </main>
     </div>
-    <BottomNav section={section} onMenu={() => setMenuOpen(true)} />
+    <BottomNav section={navSection(section)} onMenu={() => setMenuOpen(true)} />
     <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
       <SheetContent side="left" className="db-sheet">
         <SheetTitle className="sr-only">School portal menu</SheetTitle>
         <SheetDescription className="sr-only">School portal sections</SheetDescription>
         <SchoolCard />
-        <SchoolNav active={section} onNavigate={() => setMenuOpen(false)} />
+        <SchoolNav active={navSection(section)} onNavigate={() => setMenuOpen(false)} />
       </SheetContent>
     </Sheet>
   </div>;
@@ -48,12 +46,13 @@ function ActiveSection({ section, focus }: { section: Section; focus?: string | 
   switch (section) {
     case 'school': return <SchoolDetailsView />;
     case 'students': return <StudentsView focus={focus} />;
+    case 'student': return <StudentProfileView key={focus} studentId={focus} />;
     case 'campaigns': return <CampaignsView focus={focus} />;
     case 'forums': return <ForumsView />;
     case 'reports': return <ReportsView />;
     case 'updates': return <UpdatesView focus={focus} />;
     case 'suggestions': return <SuggestionsView />;
-    case 'profile': return <ProfileView />;
+    case 'profile': return <ProfileView tab={focus} />;
     default: return <OverviewView />;
   }
 }
@@ -70,6 +69,38 @@ function SchoolCard() {
     </div>
     <p className="adm-role"><School /> {school.name} · {students.length} students</p>
   </section>;
+}
+
+function SchoolDock({ active }: { active: Section }) {
+  const { profile, school, counts } = useSchool();
+  const navigate = useNavigate();
+  const toEntry = (item: (typeof navGroups)[number]['items'][number]): DockEntry => ({
+    id: item.section, label: item.label, icon: item.icon, count: item.count ? counts[item.count] : 0, soft: item.count !== 'reports',
+  });
+  const name = `${profile.firstName} ${profile.lastName}`;
+
+  function signOut() {
+    signOutDemo();
+    navigate({ to: '/login' });
+  }
+
+  return <ConsoleDock
+    label="School navigation"
+    active={active}
+    dock={navGroups.flatMap(group => group.items).filter(item => item.section !== 'profile').map(toEntry)}
+    groups={navGroups.map(group => ({ label: group.label, items: group.items.map(toEntry) }))}
+    renderLink={(entry, props) => <SchoolLink section={entry.id as Section} {...props} />}
+    me={<SchoolLink section="profile" className={cn('db-dock-item db-dock-me', active === 'profile' && 'is-active')} aria-current={active === 'profile' ? 'page' : undefined}>
+      <Face name={name} size={28} />
+      <span><strong>{name}</strong><small>{profile.title} · {school.short}</small></span>
+    </SchoolLink>}
+    extras={close => <>
+      <SchoolLink section="profile" className="db-more-item" onClick={close}><UserCog /><span>Profile</span></SchoolLink>
+      <SchoolLink section="profile" focus="activity" className="db-more-item" onClick={close}><History /><span>My activity</span></SchoolLink>
+      <Link to="/" className="db-more-item" onClick={close}><Home /><span>ByeUni home page</span></Link>
+      <button type="button" className="db-more-item" onClick={signOut}><LogOut /><span>Sign out</span></button>
+    </>}
+  />;
 }
 
 function SchoolNav({ active, onNavigate }: { active: Section; onNavigate?: () => void }) {
@@ -135,7 +166,8 @@ function TopBar({ onMenu }: { onMenu: () => void }) {
         <DropdownMenuContent align="end" className="db-menu">
           <DropdownMenuLabel><strong>{profile.firstName} {profile.lastName}</strong><small>School admin · {school.short}</small></DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild><SchoolLink section="profile"><UserCog />My profile</SchoolLink></DropdownMenuItem>
+          <DropdownMenuItem asChild><SchoolLink section="profile"><UserCog />Profile</SchoolLink></DropdownMenuItem>
+          <DropdownMenuItem asChild><SchoolLink section="profile" focus="activity"><History />My activity</SchoolLink></DropdownMenuItem>
           <DropdownMenuItem asChild><SchoolLink section="school"><School />School details</SchoolLink></DropdownMenuItem>
           <DropdownMenuItem asChild><Link to="/"><Home />ByeUni home page</Link></DropdownMenuItem>
           <DropdownMenuSeparator />
@@ -156,7 +188,7 @@ function SchoolSearch() {
     if (!q) return [];
     const found: { id: string; label: string; meta: string; image?: string | undefined; section: Section }[] = [];
     students.filter(s => `${s.name} ${s.email} ${s.major ?? ''}`.toLowerCase().includes(q))
-      .forEach(s => found.push({ id: s.id, label: s.name, meta: `Student · ${s.major ?? s.email}`, image: userPhoto(s), section: 'students' }));
+      .forEach(s => found.push({ id: s.id, label: s.name, meta: `Student · ${s.major ?? s.email}`, image: userPhoto(s), section: 'student' }));
     campaigns.filter(c => c.title.toLowerCase().includes(q))
       .forEach(c => found.push({ id: c.id, label: c.title, meta: `Campaign · ${c.category}`, image: coverSrc(c.cover), section: 'campaigns' }));
     return found.slice(0, 8);

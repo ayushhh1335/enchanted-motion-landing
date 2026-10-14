@@ -2,41 +2,64 @@ import { useState, type ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
 import { format } from 'date-fns';
 import {
-  Banknote, ChevronLeft, ChevronRight, Download, GraduationCap, HandHeart, LayoutDashboard, Library, Receipt, Search, Settings,
-  ShieldAlert, Sparkles, Users, HeartPulse,
+  Banknote, BookOpen, ChevronLeft, ChevronRight, Download, Flag, Gift, GraduationCap, HandHeart, HeartPulse, LayoutDashboard, Mail,
+  MessagesSquare, Quote, Receipt, Search, Settings, ShieldAlert, Sparkles, Tags, Trophy, UserCog, Users, Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { photos, type AdminUser } from '@/content/admin-data';
 import { cn } from '@/lib/utils';
 
-export const sections = ['overview', 'campaigns', 'withdrawals', 'payments', 'users', 'schools', 'moderation', 'safety', 'vibeys', 'library', 'settings'] as const;
+export const sections = [
+  'overview', 'emails', 'campaigns', 'fundraisers', 'categories', 'schools', 'majors', 'quotes', 'ecards', 'reports', 'withdrawals',
+  'forums', 'rewards', 'actions', 'contest', 'abuse', 'config', 'vibe', 'reported', 'school-admins', 'student',
+  'payments', 'users', 'moderation', 'safety', 'vibeys', 'library', 'settings',
+] as const;
 export type Section = (typeof sections)[number];
 export const isSection = (value: unknown): value is Section => typeof value === 'string' && (sections as readonly string[]).includes(value);
 
-export type CountKey = 'withdrawals' | 'reports' | 'flags' | 'redemptions';
+/** Older links still open the matching page from the ByeUni admin menu; a student's profile sits under Fundraisers. */
+const sectionAliases: Partial<Record<Section, Section>> = {
+  users: 'fundraisers', payments: 'reports', moderation: 'reported', safety: 'vibe', vibeys: 'rewards', library: 'categories', student: 'fundraisers',
+};
+export const canonicalSection = (section: Section): Section => sectionAliases[section] ?? section;
+
+export type CountKey = 'withdrawals' | 'reports' | 'flags' | 'redemptions' | 'contests';
 export const navGroups: { label: string; items: { section: Section; label: string; icon: typeof Users; count?: CountKey }[] }[] = [
   { label: 'Overview', items: [{ section: 'overview', label: 'Dashboard', icon: LayoutDashboard }] },
   { label: 'Fundraising', items: [
+    { section: 'emails', label: 'Email Templates', icon: Mail },
     { section: 'campaigns', label: 'Campaigns', icon: HandHeart },
+    { section: 'fundraisers', label: 'Fundraisers', icon: Users },
+    { section: 'categories', label: 'Categories', icon: Tags },
+    { section: 'reports', label: 'Reports', icon: Receipt },
     { section: 'withdrawals', label: 'Withdrawals', icon: Banknote, count: 'withdrawals' },
-    { section: 'payments', label: 'Transactions', icon: Receipt },
+  ] },
+  { label: 'Campus', items: [
+    { section: 'schools', label: 'Schools', icon: GraduationCap },
+    { section: 'majors', label: 'Majors', icon: BookOpen },
+    { section: 'quotes', label: 'Quotes', icon: Quote },
+    { section: 'ecards', label: 'eCards', icon: Gift },
+    { section: 'school-admins', label: 'School Admins', icon: UserCog },
   ] },
   { label: 'Community', items: [
-    { section: 'users', label: 'Students & guests', icon: Users },
-    { section: 'schools', label: 'Schools', icon: GraduationCap },
-    { section: 'moderation', label: 'Reports', icon: ShieldAlert, count: 'reports' },
-    { section: 'safety', label: 'Vibe-check', icon: HeartPulse, count: 'flags' },
+    { section: 'forums', label: 'Forums', icon: MessagesSquare },
+    { section: 'reported', label: 'Reported forums / comments / users', icon: Flag, count: 'reports' },
+    { section: 'abuse', label: 'Report / Site Abuse', icon: ShieldAlert },
+    { section: 'vibe', label: 'Vibe-Check', icon: HeartPulse, count: 'flags' },
+  ] },
+  { label: 'Vibeys', items: [
+    { section: 'rewards', label: 'Vibeys Rewards', icon: Sparkles, count: 'redemptions' },
+    { section: 'actions', label: 'Vibeys Action', icon: Zap },
+    { section: 'contest', label: 'Grand Contest', icon: Trophy, count: 'contests' },
   ] },
   { label: 'Platform', items: [
-    { section: 'vibeys', label: 'Vibeys', icon: Sparkles, count: 'redemptions' },
-    { section: 'library', label: 'Content library', icon: Library },
-    { section: 'settings', label: 'Settings', icon: Settings },
+    { section: 'config', label: 'System Configuration', icon: Settings },
   ] },
 ];
 
-export function SectionLink({ section, className, children, onClick, ...rest }: { section: Section; className?: string | undefined; children: ReactNode; onClick?: (() => void) | undefined; 'aria-label'?: string | undefined; 'aria-current'?: 'page' | undefined }) {
-  return <Link to="/admin" search={section === 'overview' ? {} : { section }} className={className} onClick={onClick} {...rest}>{children}</Link>;
+export function SectionLink({ section, focus, className, children, onClick, ...rest }: { section: Section; focus?: string | undefined; className?: string | undefined; children: ReactNode; onClick?: (() => void) | undefined; 'aria-label'?: string | undefined; 'aria-current'?: 'page' | undefined }) {
+  return <Link to="/admin" search={section === 'overview' ? {} : focus ? { section, focus } : { section }} className={className} onClick={onClick} {...rest}>{children}</Link>;
 }
 
 export const dollars = (n: number, cents = false) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: cents ? 2 : 0, maximumFractionDigits: cents ? 2 : 0 });
@@ -61,6 +84,12 @@ export function UserCell({ user, meta }: { user?: AdminUser | undefined; meta?: 
     <Face name={user.name} photo={userPhoto(user)} />
     <span><strong>{user.name}</strong><small>{meta ?? user.email}</small></span>
   </span>;
+}
+
+/** Student fundraisers open their full profile; other accounts stay plain. */
+export function UserLink({ user, meta }: { user?: AdminUser | undefined; meta?: ReactNode }) {
+  const cell = <UserCell user={user} meta={meta} />;
+  return user?.type === 'fundraiser' ? <SectionLink section="student" focus={user.id} className="adm-plain">{cell}</SectionLink> : cell;
 }
 
 export type PillTone = 'mint' | 'sky' | 'sun' | 'rose' | 'muted';

@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import {
-  ArrowRight, CalendarDays, Flag, GraduationCap, HandHeart, ImagePlus, Lightbulb, LogOut, Megaphone, MessagesSquare, PiggyBank, RotateCcw,
+  ArrowRight, CalendarDays, Flag, GraduationCap, HandHeart, ImagePlus, Lightbulb, LogOut, Mail, Megaphone, MessagesSquare, PiggyBank, RotateCcw,
   Sparkles, UserPlus, Users,
 } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
 import { AppearancePanel } from '@/components/Appearance';
+import { ActivityLog, ChoiceRow, SavedHint, SettingsGroup, SwitchRow, useStoredPrefs } from '@/components/settings-kit';
 import { Button } from '@/components/ui/button';
+import type { DropdownOption } from '@/components/ui/dropdown';
 import { PanelHead, agoText, usePhotoPicker } from '@/components/dashboard/shared';
 import { coverSrc } from '@/content/admin-data';
 import type { SchoolProfile } from '@/content/school-data';
@@ -14,7 +16,7 @@ import { signOutDemo } from '@/lib/demo-session';
 import { cn } from '@/lib/utils';
 import { campaignState } from '@/components/admin/store';
 import { CampaignPill } from '@/components/admin/views-overview';
-import { Confirm, PageHead, Pill, Stat, UserCell, day, dollars, pct, userPhoto, Face } from '@/components/admin/ui';
+import { AdminTabs, Confirm, PageHead, Pill, Stat, UserCell, day, dollars, pct, userPhoto, Face } from '@/components/admin/ui';
 import { useSchool } from './store';
 import { SchoolLink, schoolGradient, type Section } from './ui';
 import { StudentStatus } from './views-students';
@@ -105,7 +107,7 @@ export function OverviewView() {
         </div>
       </article>
       <article className="db-panel">
-        <PanelHead title="Your activity" />
+        <PanelHead title="Your activity" action={<SchoolLink section="profile" focus="activity" className="db-link">See all</SchoolLink>} />
         <ul className="adm-audit">
           {activity.slice(0, 6).map(entry => <li key={entry.id}>
             <i className={`is-${entry.tone}`} />
@@ -189,9 +191,40 @@ export function SchoolDetailsView() {
   </section>;
 }
 
-export function ProfileView() {
-  const { profile, school, actions } = useSchool();
+const profileTabs = ['profile', 'notifications', 'appearance', 'activity'] as const;
+type ProfileTab = typeof profileTabs[number];
+const isProfileTab = (value?: string): value is ProfileTab => profileTabs.includes(value as ProfileTab);
+
+const schoolPrefDefaults = { reports: true, suggestions: true, campaigns: true, joins: false, digest: 'weekly' as 'daily' | 'weekly' | 'off' };
+const digestOptions: DropdownOption<typeof schoolPrefDefaults.digest>[] = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'off', label: 'Off' },
+];
+
+const activityKinds = [
+  { value: 'students', label: 'Students' },
+  { value: 'campaigns', label: 'Campaigns' },
+  { value: 'community', label: 'Community' },
+  { value: 'updates', label: 'Updates' },
+  { value: 'school', label: 'School' },
+];
+const activityKind = (text: string) => {
+  const t = text.toLowerCase();
+  if (/report|forum|suggestion/.test(t)) return 'community';
+  if (/campaign|review/.test(t)) return 'campaigns';
+  if (/branding|school details/.test(t)) return 'school';
+  if (/update|^posted|^edited/.test(t)) return 'updates';
+  return 'students';
+};
+
+export function ProfileView({ tab: initialTab }: { tab?: string | undefined }) {
+  const { profile, school, activity, actions } = useSchool();
   const navigate = useNavigate();
+  const [tab, setTab] = useState<ProfileTab>(isProfileTab(initialTab) ? initialTab : 'profile');
+  useEffect(() => { if (isProfileTab(initialTab)) setTab(initialTab); }, [initialTab]);
+  const prefs = useStoredPrefs('byeuni-school-settings-v1', schoolPrefDefaults);
+  const items = useMemo(() => activity.map(entry => ({ ...entry, kind: activityKind(entry.text) })), [activity]);
   const [draft, setDraft] = useState<SchoolProfile>(profile);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -212,8 +245,15 @@ export function ProfileView() {
   }
 
   return <section className="db-view">
-    <PageHead title="My profile" subtitle={`${profile.title} · ${school.name}`} />
-    <div className="adm-grid-2 is-wide-first">
+    <PageHead title="Profile & settings" subtitle={`${profile.title} · ${school.name}`}>
+      {tab === 'notifications' ? <SavedHint at={prefs.savedAt} /> : null}
+    </PageHead>
+    <AdminTabs label="Profile and settings" value={tab} onChange={setTab} items={[
+      { value: 'profile', label: 'Profile' }, { value: 'notifications', label: 'Notifications' },
+      { value: 'appearance', label: 'Appearance' }, { value: 'activity', label: 'My activity' },
+    ]} />
+
+    {tab === 'profile' ? <div className="adm-grid-2 is-wide-first">
       <article className="db-panel adm-config">
         <form className="db-form" onSubmit={event => { event.preventDefault(); save(); }}>
           <div className="adm-profile-top">
@@ -247,11 +287,27 @@ export function ProfileView() {
         <h2 className="adm-form-title">Session</h2>
         <Button variant="destructive" className="rounded-full" onClick={signOut}><LogOut /> Sign out</Button>
       </aside>
-    </div>
-    <article className="db-panel db-settings">
+    </div> : null}
+
+    {tab === 'notifications' ? <div className="st-groups st-narrow">
+      <SettingsGroup title={`${school.short} community`} note="Only activity at your school.">
+        <SwitchRow icon={Flag} title="New reports" note="When a student flags a post, profile, or forum" checked={prefs.prefs.reports} onChange={v => prefs.set('reports', v)} />
+        <SwitchRow icon={Lightbulb} title="Suggestions" note="When students send ideas for the school" checked={prefs.prefs.suggestions} onChange={v => prefs.set('suggestions', v)} />
+        <SwitchRow icon={HandHeart} title="Student campaigns" note="When a student launches or completes a campaign" checked={prefs.prefs.campaigns} onChange={v => prefs.set('campaigns', v)} />
+        <SwitchRow icon={UserPlus} title="New students" note="When an invited student signs in for the first time" checked={prefs.prefs.joins} onChange={v => prefs.set('joins', v)} />
+      </SettingsGroup>
+      <SettingsGroup title="Email">
+        <ChoiceRow icon={Mail} title="Roster summary" note={`Sent to ${profile.email}`} value={prefs.prefs.digest} onChange={v => prefs.set('digest', v)} options={digestOptions} />
+      </SettingsGroup>
+    </div> : null}
+
+    {tab === 'appearance' ? <article className="db-panel db-settings">
       <h2>Appearance</h2>
       <AppearancePanel />
-    </article>
+    </article> : null}
+
+    {tab === 'activity' ? <ActivityLog items={items} kinds={activityKinds} filename={`${school.short.toLowerCase()}-admin-activity.csv`} empty="Changes you make in the school portal show up here." /> : null}
+
     <Confirm open={resetOpen} onOpenChange={setResetOpen} title="Reset school portal data?" body="Every change you made here is replaced with the original Stanford sample data." confirmLabel="Reset" onConfirm={() => actions.resetAll()} />
   </section>;
 }

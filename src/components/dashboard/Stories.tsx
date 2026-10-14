@@ -30,7 +30,7 @@ export function StoriesRail() {
   const others = groups.filter(group => group.personId !== ME_ID);
 
   return <section className="db-panel db-stories" aria-label="Stories">
-    <header className="db-panel-head"><h2>Stories</h2><button type="button" className="db-link" onClick={() => groups.length && setViewing(mine ? 1 : 0)}>Watch all</button></header>
+    <header className="db-panel-head"><h2>Stories</h2></header>
     <div className="db-story-row">
       <div className="db-story">
         <button type="button" className="db-story-me" onClick={() => (mine ? setViewing(0) : picker.open())} aria-label={mine ? 'View your story' : 'Add to your story'}>

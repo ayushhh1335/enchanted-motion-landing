@@ -19,7 +19,7 @@ export const Route = createFileRoute('/admin')({
       focus: typeof focus === 'string' ? focus : undefined,
     };
   },
-  head: () => ({ meta: [{ title: 'Admin console — ByeUni' }, { name: 'description', content: 'Manage campaigns, payouts, schools, moderation, and Vibeys on ByeUni.' }, { name: 'robots', content: 'noindex' }] }),
+  head: () => ({ meta: [{ title: 'Admin console — ByeUni' }, { name: 'description', content: 'Platform admin tools for campaigns, fundraisers, schools, reports, forums, Vibeys, and system configuration.' }, { name: 'robots', content: 'noindex' }] }),
   component: AdminPage,
 });
 

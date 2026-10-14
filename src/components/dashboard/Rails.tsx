@@ -1,11 +1,18 @@
 import { useState } from 'react';
-import { Link } from '@tanstack/react-router';
-import { ArrowRight, BadgeCheck, Check, ChevronRight, FileUser, Sparkles, UserPlus } from 'lucide-react';
+import { Link, useNavigate } from '@tanstack/react-router';
+import {
+  ArrowRight, BadgeCheck, Bell, Bookmark, Check, ChevronRight, CircleHelp, FileUser, History, Lightbulb, ListChecks, LogOut, Menu, Palette, ReceiptText, Settings, Sparkles,
+  SquarePlus, UserPlus,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { LogoMark } from '@/components/site-chrome';
 import { ME_ID, isMajorMate, isSchoolmate, majorOf, me, people, personById } from '@/content/dashboard-data';
+import { signOutDemo } from '@/lib/demo-session';
 import { cn } from '@/lib/utils';
+import { CreateMenu } from './CreateMenu';
 import { CompleteProfileDialog, DonateDialog, EditProfileDialog } from './dialogs';
-import { InviteDialog, InvitePromo, StudentOfTheDay } from './home-widgets';
+import { InviteDialog, SchoolUpdates } from './home-widgets';
 import { Avatar, Bar, PanelHead, ProfileLink, ViewLink, compact, navItems, usd, type View } from './shared';
 import { completionOf, useDashboard, useProfileSteps, type LiveCampaign } from './store';
 
@@ -44,13 +51,18 @@ export function ProfileCard() {
   </section>;
 }
 
-export function SideNav({ active, onNavigate, compactMode }: { active: View; onNavigate?: () => void; compactMode?: boolean }) {
-  const { chats, notices } = useDashboard();
-  const unreadChats = chats.reduce((sum, chat) => sum + chat.unread, 0);
+export function SideNav({ active, onNavigate, onNotifications, compactMode }: { active: View; onNavigate?: () => void; onNotifications?: () => void; compactMode?: boolean }) {
+  const { notices } = useDashboard();
   const unreadNotices = notices.filter(n => n.unread).length;
-  const badges: Partial<Record<View, number>> = { messages: unreadChats, notifications: unreadNotices };
+  const badges: Partial<Record<View, number>> = { notifications: unreadNotices };
   return <nav className={cn('db-nav', compactMode && 'is-compact')} aria-label="Dashboard">
-    {navItems.filter(item => item.view !== 'profile').map(item => <ViewLink
+    {navItems.filter(item => item.view !== 'profile' && item.view !== 'messages').map(item => item.view === 'notifications' && onNotifications
+      ? <button key={item.view} type="button" className="db-nav-item" onClick={onNotifications}>
+        <item.icon />
+        <span>{item.label}</span>
+        {unreadNotices ? <em>{unreadNotices}</em> : null}
+      </button>
+      : <ViewLink
       key={item.view}
       view={item.view}
       className={cn('db-nav-item', active === item.view && 'is-active')}
@@ -72,12 +84,105 @@ export function CVisionPromo() {
   </ViewLink>;
 }
 
-export function LeftRail({ active }: { active: View }) {
-  return <aside className="db-left" aria-label="Your profile and navigation">
-    <ProfileCard />
-    <section className="db-panel db-nav-panel"><SideNav active={active} /></section>
-    <CVisionPromo />
+const dockViews: View[] = ['home', 'network', 'communities', 'campaigns', 'events', 'cvision'];
+const moreViews: View[] = ['saved', 'vibeys', 'suggestions', 'settings', 'account'];
+
+/** Instagram-style rail: icons only, labels slide out on hover or keyboard focus. Stays slim while the notifications drawer is open. */
+export function LeftRail({ active, onCompose, noticesOpen, onNotices }: { active: View; onCompose: () => void; noticesOpen: boolean; onNotices: (open: boolean) => void }) {
+  const { notices } = useDashboard();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const completion = completionOf(useProfileSteps());
+  const unreadNotices = notices.filter(n => n.unread).length;
+  const current = noticesOpen ? null : active;
+  return <aside className={cn('db-dock', (moreOpen || createOpen) && 'is-open', noticesOpen && 'is-slim')} aria-label="Dashboard navigation">
+    <ViewLink view="profile" className={cn('db-dock-item db-dock-me', current === 'profile' && 'is-active')} aria-current={current === 'profile' ? 'page' : undefined}>
+      <Avatar person={me} size={28} />
+      <span><strong>{me.name}</strong><small>Profile {completion}% complete</small></span>
+    </ViewLink>
+    <i className="db-dock-sep" aria-hidden="true" />
+    <nav className="db-dock-nav" aria-label="Dashboard">
+      {navItems.filter(item => dockViews.includes(item.view)).map(item => <ViewLink
+        key={item.view}
+        view={item.view}
+        className={cn('db-dock-item', current === item.view && 'is-active')}
+        aria-current={current === item.view ? 'page' : undefined}
+      >
+        <item.icon />
+        <span>{item.label}</span>
+      </ViewLink>)}
+      <button
+        type="button"
+        className={cn('db-dock-item db-dock-bell', noticesOpen && 'is-active')}
+        aria-expanded={noticesOpen}
+        aria-label={unreadNotices ? `Notifications, ${unreadNotices} unread` : 'Notifications'}
+        onClick={() => onNotices(!noticesOpen)}
+      >
+        <Bell />
+        <span>Notifications</span>
+        {unreadNotices ? <em>{unreadNotices}</em> : null}
+      </button>
+      <CreateMenu onCompose={onCompose} side="right" align="start" onOpenChange={setCreateOpen}>
+        <button type="button" className={cn('db-dock-item', createOpen && 'is-active')} aria-label="Create">
+          <SquarePlus /><span>Create</span>
+        </button>
+      </CreateMenu>
+    </nav>
+    <MoreMenu open={moreOpen} onOpenChange={setMoreOpen} active={current ? moreViews.includes(current) : false} completion={completion} />
   </aside>;
+}
+
+function MoreMenu({ open, onOpenChange, active, completion }: { open: boolean; onOpenChange: (open: boolean) => void; active: boolean; completion: number }) {
+  const { posts, vibeys } = useDashboard();
+  const navigate = useNavigate();
+  const [inviting, setInviting] = useState(false);
+  const [completing, setCompleting] = useState(false);
+  const close = () => onOpenChange(false);
+  const savedCount = posts.filter(post => post.saved).length;
+
+  function signOut() {
+    signOutDemo();
+    navigate({ to: '/login' });
+  }
+
+  return <>
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>
+        <button type="button" className={cn('db-dock-item db-dock-more', active && 'is-active')} aria-label="More">
+          <Menu /><span>More</span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="top" align="start" sideOffset={10} className="db-more">
+        <ViewLink view="saved" className="db-more-item" onClick={close}>
+          <Bookmark /><span>Saved<small>{savedCount ? `${savedCount} saved post${savedCount === 1 ? '' : 's'}` : 'Posts you bookmark'}</small></span>
+        </ViewLink>
+        <ViewLink view="vibeys" className="db-more-item" onClick={close}>
+          <Sparkles /><span>My Vibeys<small>{vibeys.balance.toLocaleString('en-US')} points · {vibeys.streak}-day streak</small></span>
+        </ViewLink>
+        <ViewLink view="suggestions" className="db-more-item" onClick={close}>
+          <Lightbulb /><span>Suggestions<small>Send ideas to {me.school.split(' ')[0]}’s admins</small></span>
+        </ViewLink>
+        <ViewLink view="settings" tab="activity" className="db-more-item" onClick={close}>
+          <History /><span>My activity<small>Likes, comments, posts, and donations</small></span>
+        </ViewLink>
+        {completion < 100 ? <button type="button" className="db-more-item" onClick={() => { close(); setCompleting(true); }}>
+          <ListChecks /><span>Complete your profile<small>{completion}% done</small></span>
+        </button> : null}
+        <button type="button" className="db-more-item" onClick={() => { close(); setInviting(true); }}>
+          <UserPlus /><span>Invite friends<small>Earn 20 Vibeys per signup</small></span>
+        </button>
+        <i className="db-more-sep" aria-hidden="true" />
+        <ViewLink view="settings" className="db-more-item" onClick={close}><Settings /><span>Settings</span></ViewLink>
+        <ViewLink view="settings" tab="payments" className="db-more-item" onClick={close}><ReceiptText /><span>Payments & donations</span></ViewLink>
+        <ViewLink view="settings" tab="appearance" className="db-more-item" onClick={close}><Palette /><span>Switch appearance</span></ViewLink>
+        <Link to="/faqs" className="db-more-item" onClick={close}><CircleHelp /><span>Help & FAQs</span></Link>
+        <i className="db-more-sep" aria-hidden="true" />
+        <button type="button" className="db-more-item" onClick={signOut}><LogOut /><span>Sign out</span></button>
+      </PopoverContent>
+    </Popover>
+    <InviteDialog open={inviting} onOpenChange={setInviting} />
+    <CompleteProfileDialog open={completing} onOpenChange={setCompleting} />
+  </>;
 }
 
 export function SuggestedConnections({ limit = 3 }: { limit?: number }) {
@@ -85,18 +190,18 @@ export function SuggestedConnections({ limit = 3 }: { limit?: number }) {
   const [scope, setScope] = useState<'school' | 'major'>('school');
   const list = people.filter(person => (scope === 'school' ? isSchoolmate(person) : isMajorMate(person))
     && !dismissed.includes(person.id) && ['none', 'pending'].includes(connections[person.id] ?? 'none')).slice(0, limit);
-  return <section className="db-panel">
+  return <section className="db-rr-sec db-rr-people">
     <PanelHead title="People you may know" action={<ViewLink view="network" tab={scope} className="db-link">See all</ViewLink>} />
     <div className="db-seg" role="tablist" aria-label="Suggestion group">
-      <button type="button" role="tab" aria-selected={scope === 'school'} onClick={() => setScope('school')}>School friends</button>
-      <button type="button" role="tab" aria-selected={scope === 'major'} onClick={() => setScope('major')}>Major friends</button>
+      <button type="button" role="tab" aria-selected={scope === 'school'} onClick={() => setScope('school')}>School</button>
+      <button type="button" role="tab" aria-selected={scope === 'major'} onClick={() => setScope('major')}>Major</button>
     </div>
     {list.length === 0 ? <p className="db-muted">You're connected with everyone we'd suggest. Nice.</p> : null}
     <ul className="db-people-list">
       {list.map(person => {
         const pending = connections[person.id] === 'pending';
         return <li key={person.id}>
-          <ProfileLink personId={person.id} aria-label={`${person.name}'s profile`}><Avatar person={person} size={44} /></ProfileLink>
+          <ProfileLink personId={person.id} aria-label={`${person.name}'s profile`}><Avatar person={person} size={40} /></ProfileLink>
           <div><strong><ProfileLink personId={person.id} className="db-name-link">{person.name}</ProfileLink></strong><small>{scope === 'school' ? majorOf(person) : person.school} · {person.mutual} mutual</small></div>
           <Button variant="soft" size="sm" className={cn('db-connect', pending && 'is-pending')} onClick={() => actions.setConnection(person.id, pending ? 'none' : 'pending')}>
             {pending ? <><Check /> Pending</> : <><UserPlus /> Connect</>}
@@ -111,8 +216,8 @@ export function FundraisersToSupport({ limit = 2 }: { limit?: number }) {
   const { campaigns } = useDashboard();
   const [donating, setDonating] = useState<LiveCampaign | null>(null);
   const list = campaigns.filter(c => c.ownerId !== ME_ID).slice(0, limit);
-  return <section className="db-panel">
-    <PanelHead title="Fundraisers to support" action={<ViewLink view="campaigns" className="db-link">See all</ViewLink>} />
+  return <section className="db-rr-sec db-rr-tall">
+    <PanelHead title="Fundraiser to support" action={<ViewLink view="campaigns" className="db-link">See all</ViewLink>} />
     <ul className="db-fund-list">
       {list.map(c => {
         const owner = personById(c.ownerId);
@@ -125,7 +230,7 @@ export function FundraisersToSupport({ limit = 2 }: { limit?: number }) {
           <Button variant="soft" size="sm" className="db-connect" onClick={() => setDonating(c)}>Support</Button>
           <div className="db-fund-meta">
             <Bar value={c.raised} max={c.goal} />
-            <span><b>{usd(c.raised)}</b> raised</span><span>{usd(c.goal)} goal</span>
+            <span><b>{usd(c.raised)}</b> of {usd(c.goal)}</span><span>{c.daysLeft} days left</span>
           </div>
         </li>;
       })}
@@ -139,22 +244,6 @@ export function EventDate({ date }: { date: string }) {
   return <span className="db-date"><small>{d.toLocaleString('en-US', { month: 'short' })}</small><b>{d.getDate()}</b></span>;
 }
 
-export function UpcomingEvents({ limit = 2 }: { limit?: number }) {
-  const { events, actions } = useDashboard();
-  return <section className="db-panel">
-    <PanelHead title="Upcoming on campus" action={<ViewLink view="events" className="db-link">See all</ViewLink>} />
-    <ul className="db-event-list">
-      {events.slice(0, limit).map(event => <li key={event.id}>
-        <EventDate date={event.date} />
-        <div><strong>{event.title}</strong><small>{event.place}</small><small>{event.going} students going</small></div>
-        <Button variant="soft" size="sm" className={cn('db-connect', event.rsvp === 'going' && 'is-pending')} onClick={() => actions.setRsvp(event.id, 'going')}>
-          {event.rsvp === 'going' ? <><Check /> Going</> : 'Going?'}
-        </Button>
-      </li>)}
-    </ul>
-  </section>;
-}
-
 export function VibeysMini() {
   const { vibeys } = useDashboard();
   return <ViewLink view="vibeys" className="db-panel db-vibeys-mini">
@@ -164,17 +253,32 @@ export function VibeysMini() {
   </ViewLink>;
 }
 
+/** One compact card, sized to fit the screen; lower-priority sections drop out on short viewports. */
 export function RightRail() {
   return <aside className="db-right" aria-label="Suggestions">
-    <StudentOfTheDay />
-    <VibeysMini />
-    <InvitePromo />
-    <SuggestedConnections />
-    <FundraisersToSupport />
-    <UpcomingEvents />
-    <footer className="db-legal">
-      <Link to="/about">About</Link><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link><Link to="/faqs">Help</Link><Link to="/">Home</Link>
-      <span>© 2026 ByeUni · Demo data</span>
-    </footer>
+    <div className="db-panel db-rr">
+      <SchoolUpdates compact />
+      <SuggestedConnections />
+      <FundraisersToSupport limit={1} />
+      <DashFooter />
+    </div>
   </aside>;
+}
+
+export function DashFooter({ className }: { className?: string }) {
+  return <footer className={cn('db-foot', className)}>
+    <nav aria-label="About ByeUni">
+      <Link to="/about">About</Link>
+      <Link to="/faqs">Help</Link>
+      <Link to="/blog">Blog</Link>
+      <Link to="/contact">Contact</Link>
+      <Link to="/privacy">Privacy</Link>
+      <Link to="/terms">Terms</Link>
+    </nav>
+    <div className="db-foot-brand">
+      <Link to="/" className="db-foot-logo" aria-label="ByeUni home"><LogoMark /></Link>
+      <span>© {new Date().getFullYear()} ByeUni</span>
+      <em>Demo data</em>
+    </div>
+  </footer>;
 }

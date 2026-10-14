@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Ban, Download, Eye, Flag, GraduationCap, Heart, Mail, MapPin, MessagesSquare, MoreHorizontal, Phone, RotateCcw, Send, ShieldQuestion,
+  ArrowLeft, Ban, Download, Eye, Flag, GraduationCap, Heart, Mail, MapPin, MessagesSquare, MoreHorizontal, Phone, RotateCcw, Send, ShieldQuestion,
   UserCheck, UserMinus, UserPlus, UserX, Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,9 @@ import {
   AdminTabs, Check, Confirm, Empty, Face, PageHead, Pill, SearchBox, Toolbar, UserCell, day, dollars, downloadCsv, pct, usePager,
   useSelection, userPhoto,
 } from '@/components/admin/ui';
+import { StudentProfile } from '@/components/admin/StudentProfile';
 import { schoolDomain, useSchool } from './store';
+import { SchoolLink } from './ui';
 
 export function StudentStatus({ student }: { student: SchoolStudent }) {
   if (student.suspended) return <Pill tone="rose">Suspended</Pill>;
@@ -94,7 +96,7 @@ export function StudentsView({ focus }: { focus?: string | undefined }) {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild><button type="button" className="db-icon-btn" aria-label={`Actions for ${s.name}`}><MoreHorizontal /></button></DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="db-menu">
-                    <DropdownMenuItem onSelect={() => setOpenId(s.id)}><Eye />View profile</DropdownMenuItem>
+                    <DropdownMenuItem asChild><SchoolLink section="student" focus={s.id}><Eye />View profile</SchoolLink></DropdownMenuItem>
                     {s.invited
                       ? <DropdownMenuItem onSelect={() => actions.resendInvite(s.id)}><Send />Resend invitation</DropdownMenuItem>
                       : <DropdownMenuItem onSelect={() => actions.setStudentEnabled(s.id, !s.enabled)}>{s.enabled ? <><UserX />Deactivate</> : <><UserCheck />Activate</>}</DropdownMenuItem>}
@@ -177,6 +179,7 @@ function StudentSheet({ studentId, onClose, onSuspend }: { studentId: string | n
           <ul className="db-row-list is-plain">{groups.map(f => <li key={f.id}><span className="adm-stat-icon"><MessagesSquare /></span><div><strong>{f.title}</strong><small>{f.members.toLocaleString('en-US')} members</small></div>{f.removed ? <Pill tone="rose">Removed</Pill> : null}</li>)}</ul>
         </> : null}
         <div className="db-dialog-actions is-start">
+          <Button variant="ink" asChild><SchoolLink section="student" focus={student.id}><Eye /> View full profile</SchoolLink></Button>
           {student.invited
             ? <Button variant="soft" className="rounded-full" onClick={() => actions.resendInvite(student.id)}><Send /> Resend invitation</Button>
             : <Button variant="soft" className="rounded-full" onClick={() => actions.setStudentEnabled(student.id, !student.enabled)}>{student.enabled ? <><UserX /> Deactivate</> : <><UserCheck /> Activate</>}</Button>}
@@ -187,6 +190,49 @@ function StudentSheet({ studentId, onClose, onSuspend }: { studentId: string | n
       </> : null}
     </SheetContent>
   </Sheet>;
+}
+
+export function StudentProfileView({ studentId }: { studentId?: string | undefined }) {
+  const { students, campaigns, forums, suggestions, school, actions } = useSchool();
+  const [suspending, setSuspending] = useState(false);
+  const [reason, setReason] = useState('');
+  const student = students.find(s => s.id === studentId);
+  const back = <SchoolLink section="students" className="adm-back"><ArrowLeft /> Students</SchoolLink>;
+  if (!student) return <section className="db-view">
+    {back}
+    <PageHead title="Student not found" subtitle={`This student isn’t on the ${school.short} roster anymore.`} />
+  </section>;
+
+  return <>
+    <StudentProfile
+      student={student}
+      schoolName={school.name}
+      status={<StudentStatus student={student} />}
+      back={back}
+      campaigns={campaigns.filter(c => c.ownerId === student.id)}
+      forums={forums.filter(f => f.ownerId === student.id)}
+      suggestions={suggestions.filter(s => s.userId === student.id)}
+      actions={<>
+        <Button variant="soft" className="rounded-full" asChild><a href={`mailto:${student.email}`}><Mail /> Email</a></Button>
+        {student.invited
+          ? <Button variant="soft" className="rounded-full" onClick={() => actions.resendInvite(student.id)}><Send /> Resend invitation</Button>
+          : <Button variant="soft" className="rounded-full" onClick={() => actions.setStudentEnabled(student.id, !student.enabled)}>{student.enabled ? <><UserX /> Deactivate</> : <><UserCheck /> Activate</>}</Button>}
+        {student.suspended
+          ? <Button variant="ink" onClick={() => actions.restoreStudent(student.id)}><RotateCcw /> Restore</Button>
+          : <Button variant="destructive" className="rounded-full" onClick={() => { setReason(''); setSuspending(true); }}><Ban /> Suspend</Button>}
+      </>}
+    />
+    <Confirm
+      open={suspending}
+      onOpenChange={setSuspending}
+      title={`Suspend ${student.name}?`}
+      confirmLabel="Suspend"
+      body="They can’t sign in, post, or receive donations until you restore the account. ByeUni is notified."
+      onConfirm={() => actions.suspendStudent(student.id, reason)}
+    >
+      <label className="db-field">Reason<input value={reason} onChange={event => setReason(event.target.value)} placeholder="Violated the student code of conduct" /></label>
+    </Confirm>
+  </>;
 }
 
 function InviteDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -270,7 +316,7 @@ export function CampaignsView({ focus }: { focus?: string | undefined }) {
                 <td data-label="Campaign"><button type="button" className="adm-campaign-cell" onClick={() => setOpenId(c.id)}>
                   <img src={coverSrc(c.cover)} alt="" /><span><strong>{c.title}</strong><small>{c.category} · {c.visibility}</small></span>
                 </button></td>
-                <td data-label="Created by"><UserCell user={owner} meta={owner?.major} /></td>
+                <td data-label="Created by">{owner ? <SchoolLink section="student" focus={owner.id} className="adm-plain"><UserCell user={owner} meta={owner.major} /></SchoolLink> : <UserCell user={owner} />}</td>
                 <td data-label="Dates" className="adm-dates">{day(c.start).replace(/, \d{4}$/, '')} – {day(c.end)}</td>
                 <td data-label="Raised / goal"><span className="adm-progress"><span><b>{dollars(c.raised)}</b> / {dollars(c.goal)}</span><span className="db-bar"><span style={{ width: `${pct(c.raised, c.goal)}%` }} /></span></span></td>
                 <td data-label="Likes"><span className="adm-likes"><Heart /> {c.likes}</span></td>
@@ -336,7 +382,7 @@ function CampaignSheet({ campaignId, onClose, onReview }: { campaignId: string |
         <h3 className="adm-detail-title">Journey</h3>
         <p className="sch-story">{campaign.story}</p>
         <h3 className="adm-detail-title">Student</h3>
-        <UserCell user={owner} meta={owner ? `${owner.major ?? ''} · ${owner.email}` : undefined} />
+        {owner ? <SchoolLink section="student" focus={owner.id} className="adm-plain"><UserCell user={owner} meta={`${owner.major ?? ''} · ${owner.email}`} /></SchoolLink> : <UserCell user={owner} />}
         {escalation ? <p className="adm-callout is-sky"><ShieldQuestion /> Sent to ByeUni {agoText(escalation.at)}: “{escalation.reason}”</p> : null}
         <div className="db-dialog-actions is-start">
           {escalation

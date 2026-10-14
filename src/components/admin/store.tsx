@@ -8,6 +8,7 @@ import {
   type EmailTemplate, type Flag, type FlagStatus, type Forum, type LibraryItem, type Payment, type Quote, type Redemption, type Report,
   type School, type SchoolAdmin, type Suggestion, type SystemConfig, type WatchWord, type Withdrawal, type WordCategory,
 } from '@/content/admin-data';
+import { mergeSuggestions, useSharedSuggestions } from '@/lib/student-sync';
 
 export type AdminState = {
   schools: School[]; users: AdminUser[]; schoolAdmins: SchoolAdmin[]; campaigns: AdminCampaign[]; payments: Payment[];
@@ -74,6 +75,9 @@ function useAdminStore() {
       return { ...next, audit: [{ id: uid('au'), at: Date.now(), text: log.text, tone: log.tone ?? 'mint' }, ...next.audit].slice(0, 80) };
     });
   }, []);
+
+  const shared = useSharedSuggestions();
+  const suggestions = useMemo(() => mergeSuggestions(state.suggestions, shared), [state.suggestions, shared]);
 
   const lookups = useMemo(() => {
     const users = new Map(state.users.map(u => [u.id, u]));
@@ -320,7 +324,7 @@ function useAdminStore() {
     },
   }), [commit, lookups]);
 
-  return { ...state, lookups, counts, actions };
+  return { ...state, suggestions, lookups, counts, actions };
 }
 
 type AdminStore = ReturnType<typeof useAdminStore>;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { format } from 'date-fns';
 import {
   Ban, Eye, Lock, MessageSquare, MessagesSquare, MoreHorizontal, PencilLine, Plus, RotateCcw, ShieldQuestion, Sparkles, Trash2,
@@ -16,7 +16,16 @@ import {
   useSelection, userPhoto,
 } from '@/components/admin/ui';
 import { uid, useSchool, type ReportAction } from './store';
+import { SchoolLink } from './ui';
 import { DateChip } from './views-home';
+
+/** A student's name and photo that opens their full profile. */
+function StudentCell({ id, meta }: { id: string; meta?: ReactNode }) {
+  const { lookups } = useSchool();
+  const student = lookups.students.get(id);
+  const cell = <UserCell user={student} meta={meta ?? student?.major} />;
+  return student ? <SchoolLink section="student" focus={student.id} className="adm-plain">{cell}</SchoolLink> : cell;
+}
 
 type ForumTab = 'active' | 'removed';
 
@@ -45,7 +54,7 @@ export function ForumsView() {
           <tbody>
             {pager.rows.map(f => <tr key={f.id}>
               <td data-label="Forum"><button type="button" className="adm-plain adm-forum-title" onClick={() => setOpenId(f.id)}>{f.isPrivate ? <Lock aria-label="Private" /> : <MessagesSquare />}{f.title}</button></td>
-              <td data-label="Started by"><UserCell user={lookups.students.get(f.ownerId)} meta={lookups.students.get(f.ownerId)?.major} /></td>
+              <td data-label="Started by"><StudentCell id={f.ownerId} /></td>
               <td data-label="Members" className="adm-num">{f.members.toLocaleString('en-US')}</td>
               <td data-label="Posts" className="adm-num">{f.posts}</td>
               <td data-label="Created on" className="adm-dates">{day(f.createdAt)}</td>
@@ -87,11 +96,11 @@ function ForumSheet({ forumId, onClose }: { forumId: string | null; onClose: () 
           <div><dt>Created</dt><dd>{format(forum.createdAt, 'MMM d')}</dd></div>
         </dl>
         <h3 className="adm-detail-title">Started by</h3>
-        <UserCell user={lookups.students.get(forum.ownerId)} />
+        <StudentCell id={forum.ownerId} meta={lookups.students.get(forum.ownerId)?.email} />
         <h3 className="adm-detail-title">Recent posts</h3>
         {forum.recent.length ? <ul className="db-row-list is-plain">{forum.recent.map(p => {
           const author = lookups.students.get(p.authorId);
-          return <li key={p.id}><Face name={author?.name ?? '?'} photo={userPhoto(author)} size={36} /><div><strong>{author?.name}</strong><small className="sch-post">{p.text}</small><small>{agoText(p.at)}</small></div></li>;
+          return <li key={p.id}><Face name={author?.name ?? '?'} photo={userPhoto(author)} size={36} /><div><strong>{author ? <SchoolLink section="student" focus={author.id} className="adm-plain">{author.name}</SchoolLink> : 'Former student'}</strong><small className="sch-post">{p.text}</small><small>{agoText(p.at)}</small></div></li>;
         })}</ul> : <p className="db-muted">{forum.isPrivate ? 'Posts in private forums are visible to members only.' : 'No posts yet.'}</p>}
         <div className="db-dialog-actions is-start">
           {forum.removed
@@ -114,7 +123,7 @@ export function ReportsView() {
   const rows = tab === 'resolved' ? reports.filter(r => r.status !== 'open') : openOf(tab);
 
   return <section className="db-view">
-    <PageHead title="Reported" subtitle="Forums, comments, and students your community flagged." />
+    <PageHead title="Reported forums, comments & users" subtitle="Forums, comments, and students your community flagged." />
     <AdminTabs label="Report type" value={tab} onChange={setTab} items={[
       { value: 'forum', label: 'Forums', count: openOf('forum').length }, { value: 'comment', label: 'Comments', count: openOf('comment').length },
       { value: 'user', label: 'Students', count: openOf('user').length }, { value: 'resolved', label: `Resolved ${reports.filter(r => r.status !== 'open').length}` },
@@ -146,8 +155,8 @@ function ReportCard({ report }: { report: SchoolReport }) {
     {target ? <p className="adm-report-target">{target}</p> : null}
     <blockquote>{report.excerpt}</blockquote>
     <div className="adm-report-people">
-      <UserCell user={author} meta={repeat > 1 ? <span className="adm-warn">{repeat} reports on this student</span> : author?.major} />
-      <small>Reported by <strong>{reporter?.name ?? 'a student'}</strong></small>
+      <StudentCell id={report.authorId} meta={repeat > 1 ? <span className="adm-warn">{repeat} reports on this student</span> : author?.major} />
+      <small>Reported by {reporter ? <SchoolLink section="student" focus={reporter.id} className="adm-plain"><strong>{reporter.name}</strong></SchoolLink> : <strong>a student</strong>}</small>
     </div>
     <footer>
       {isOpen ? <>
@@ -324,7 +333,7 @@ export function SuggestionsView() {
           <tbody>
             {pager.rows.map(s => <tr key={s.id} className={cn(selection.has(s.id) && 'is-selected')}>
               <td className="adm-col-check"><Check checked={selection.has(s.id)} onChange={on => selection.toggle(s.id, on)} label="Select suggestion" /></td>
-              <td data-label="Student"><UserCell user={lookups.students.get(s.userId)} meta={lookups.students.get(s.userId)?.major} /></td>
+              <td data-label="Student"><StudentCell id={s.userId} /></td>
               <td data-label="Suggestion"><span className="sch-suggestion">“{s.text}”</span></td>
               <td data-label="Date" className="adm-dates">{day(s.at)}</td>
             </tr>)}

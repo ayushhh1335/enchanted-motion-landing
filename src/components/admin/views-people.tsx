@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Ban, Download, Eye, GraduationCap, ImagePlus, KeyRound, Mail, MapPin, MoreHorizontal, PencilLine, Phone, Plus, RotateCcw, Sparkles,
+  ArrowLeft, Ban, Download, Eye, GraduationCap, ImagePlus, KeyRound, Mail, MapPin, MoreHorizontal, PencilLine, Phone, Plus, RotateCcw, Sparkles,
   Trash2, UserCheck, UserX, Users, Wand2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,9 +13,10 @@ import { agoText, usePhotoPicker } from '@/components/dashboard/shared';
 import { coverSrc, type AdminUser, type Membership, type School, type SchoolAdmin, type UserType } from '@/content/admin-data';
 import { cn } from '@/lib/utils';
 import { campaignState, uid, useAdmin } from './store';
+import { StudentProfile } from './StudentProfile';
 import { CampaignPill } from './views-overview';
 import {
-  AdminTabs, Check, Confirm, Empty, ExportButton, Face, PageHead, Pill, SearchBox, Toolbar, UserCell, day, dollars, downloadCsv,
+  AdminTabs, Check, Confirm, Empty, ExportButton, Face, PageHead, Pill, SearchBox, SectionLink, Toolbar, UserCell, day, dollars, downloadCsv,
   summarize, usePager, useSelection, userPhoto,
 } from './ui';
 
@@ -58,7 +59,7 @@ export function UsersView({ focus }: { focus?: string | undefined }) {
   }
 
   return <section className="db-view">
-    <PageHead title="Students & guests" subtitle="Fundraisers, their team members, and guest donors.">
+    <PageHead title="Fundraisers" subtitle="Student fundraisers, the teammates on their campaigns, and guest donors.">
       <ExportButton onClick={exportRows} />
       <Button variant="ink" onClick={() => setAdding(tab === 'guest' ? 'guest' : 'fundraiser')}><Plus /> Add {tab === 'guest' ? 'guest' : 'student'}</Button>
     </PageHead>
@@ -107,7 +108,9 @@ export function UsersView({ focus }: { focus?: string | undefined }) {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild><button type="button" className="db-icon-btn" aria-label={`Actions for ${u.name}`}><MoreHorizontal /></button></DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="db-menu">
-                    <DropdownMenuItem onSelect={() => setOpenId(u.id)}><Eye />View profile</DropdownMenuItem>
+                    {u.type === 'fundraiser'
+                      ? <DropdownMenuItem asChild><SectionLink section="student" focus={u.id}><Eye />View profile</SectionLink></DropdownMenuItem>
+                      : <DropdownMenuItem onSelect={() => setOpenId(u.id)}><Eye />View profile</DropdownMenuItem>}
                     <DropdownMenuItem onSelect={() => actions.setUserEnabled(u.id, !u.enabled)}>{u.enabled ? <><UserX />Deactivate</> : <><UserCheck />Activate</>}</DropdownMenuItem>
                     {u.suspended
                       ? <DropdownMenuItem onSelect={() => actions.restoreUser(u.id)}><RotateCcw />Restore</DropdownMenuItem>
@@ -190,6 +193,7 @@ function UserSheet({ userId, onClose, onSuspend }: { userId: string | null; onCl
         </> : null}
         {user.type === 'team' ? <p className="db-muted">Member of {lookups.users.get(user.parentId ?? '')?.name}’s team.</p> : null}
         <div className="db-dialog-actions is-start">
+          {user.type === 'fundraiser' ? <Button variant="ink" asChild><SectionLink section="student" focus={user.id}><Eye /> View full profile</SectionLink></Button> : null}
           <Button variant="soft" className="rounded-full" onClick={() => actions.setUserEnabled(user.id, !user.enabled)}>{user.enabled ? <><UserX /> Deactivate</> : <><UserCheck /> Activate</>}</Button>
           {user.suspended
             ? <Button variant="ink" onClick={() => actions.restoreUser(user.id)}><RotateCcw /> Restore</Button>
@@ -199,6 +203,47 @@ function UserSheet({ userId, onClose, onSuspend }: { userId: string | null; onCl
       </> : null}
     </SheetContent>
   </Sheet>;
+}
+
+export function StudentProfileView({ userId }: { userId?: string | undefined }) {
+  const { users, campaigns, forums, suggestions, lookups, actions } = useAdmin();
+  const [suspending, setSuspending] = useState(false);
+  const [reason, setReason] = useState('');
+  const user = users.find(u => u.id === userId);
+  const back = <SectionLink section="fundraisers" className="adm-back"><ArrowLeft /> Fundraisers</SectionLink>;
+  if (!user) return <section className="db-view">
+    {back}
+    <PageHead title="Account not found" subtitle="This account was deleted or never existed." />
+  </section>;
+
+  return <>
+    <StudentProfile
+      student={user}
+      schoolName={lookups.schools.get(user.schoolId ?? '')?.name ?? 'No school linked'}
+      status={<UserStatus user={user} />}
+      back={back}
+      campaigns={campaigns.filter(c => c.ownerId === user.id)}
+      forums={forums.filter(f => f.ownerId === user.id)}
+      suggestions={suggestions.filter(s => s.userId === user.id)}
+      actions={<>
+        <Button variant="soft" className="rounded-full" asChild><a href={`mailto:${user.email}`}><Mail /> Email</a></Button>
+        <Button variant="soft" className="rounded-full" onClick={() => actions.setUserEnabled(user.id, !user.enabled)}>{user.enabled ? <><UserX /> Deactivate</> : <><UserCheck /> Activate</>}</Button>
+        {user.suspended
+          ? <Button variant="ink" onClick={() => actions.restoreUser(user.id)}><RotateCcw /> Restore</Button>
+          : <Button variant="destructive" className="rounded-full" onClick={() => { setReason(''); setSuspending(true); }}><Ban /> Suspend</Button>}
+      </>}
+    />
+    <Confirm
+      open={suspending}
+      onOpenChange={setSuspending}
+      title={`Suspend ${user.name}?`}
+      confirmLabel="Suspend"
+      body="They can’t sign in, post, or receive donations until you restore the account."
+      onConfirm={() => { actions.suspendUser(user.id, reason); }}
+    >
+      <label className="db-field">Reason<input value={reason} onChange={event => setReason(event.target.value)} placeholder="Community guidelines violation" /></label>
+    </Confirm>
+  </>;
 }
 
 function UserEditor({ type, onClose }: { type: UserType | null; onClose: () => void }) {
@@ -248,25 +293,29 @@ function UserEditor({ type, onClose }: { type: UserType | null; onClose: () => v
 
 type SchoolTab = 'schools' | 'admins';
 
-export function SchoolsView({ focus }: { focus?: string | undefined }) {
+export function SchoolsView({ focus, pane }: { focus?: string | undefined; pane?: 'schools' | 'admins' | undefined }) {
   const { schools, schoolAdmins, users, lookups, actions } = useAdmin();
-  const [tab, setTab] = useState<SchoolTab>('schools');
+  const [tab, setTab] = useState<SchoolTab>(pane === 'admins' ? 'admins' : 'schools');
   const [query, setQuery] = useState('');
   const [openId, setOpenId] = useState<string | null>(focus ?? null);
   const [editing, setEditing] = useState<School | 'new' | null>(null);
   const [adminEdit, setAdminEdit] = useState<SchoolAdmin | 'new' | null>(null);
   const [removeAdmin, setRemoveAdmin] = useState<SchoolAdmin | null>(null);
   useEffect(() => { if (focus) setOpenId(focus); }, [focus]);
+  useEffect(() => { if (pane) setTab(pane === 'admins' ? 'admins' : 'schools'); }, [pane]);
   const q = query.trim().toLowerCase();
   const studentsAt = (id: string) => users.filter(u => u.schoolId === id && u.type === 'fundraiser');
 
   return <section className="db-view">
-    <PageHead title="Schools" subtitle="Partner universities, their students, and the admins who run each campus.">
+    <PageHead
+      title={tab === 'admins' ? 'School Admins' : 'Schools'}
+      subtitle={tab === 'admins' ? 'Campus staff who manage their own school’s students, forums, and campaigns.' : 'Partner universities and the students registered on each campus.'}
+    >
       {tab === 'schools'
         ? <Button variant="ink" onClick={() => setEditing('new')}><Plus /> Add school</Button>
         : <Button variant="ink" onClick={() => setAdminEdit('new')}><Plus /> Invite school admin</Button>}
     </PageHead>
-    <AdminTabs label="Schools" value={tab} onChange={setTab} items={[{ value: 'schools', label: `Schools ${schools.length}` }, { value: 'admins', label: `School admins ${schoolAdmins.length}` }]} />
+    {pane ? null : <AdminTabs label="Schools" value={tab} onChange={setTab} items={[{ value: 'schools', label: `Schools ${schools.length}` }, { value: 'admins', label: `School admins ${schoolAdmins.length}` }]} />}
     {tab === 'schools' ? <>
       <Toolbar><SearchBox value={query} onChange={setQuery} placeholder="Search schools" /></Toolbar>
       <div className="adm-school-grid">
@@ -356,10 +405,10 @@ function SchoolSheet({ schoolId, onClose, onEdit }: { schoolId: string | null; o
       {schoolAdmins.filter(a => a.schoolId === school.id).map(a => <p key={a.id} className="adm-user"><Face name={a.name} /><span><strong>{a.name}</strong><small>{a.title} · {a.active ? 'Active' : 'Inactive'}</small></span></p>)}
       {schoolAdmins.every(a => a.schoolId !== school.id) ? <p className="db-muted">No admin assigned yet.</p> : null}
       <h3 className="adm-detail-title">Registered students on ByeUni ({students.length})</h3>
-      {students.length ? <ul className="db-row-list is-plain">{students.map(u => <li key={u.id}><UserCell user={u} meta={u.major} /><UserStatus user={u} /></li>)}</ul> : <p className="db-muted">No students registered yet.</p>}
+      {students.length ? <ul className="db-row-list is-plain">{students.map(u => <li key={u.id}><SectionLink section="student" focus={u.id} className="adm-plain"><UserCell user={u} meta={u.major} /></SectionLink><UserStatus user={u} /></li>)}</ul> : <p className="db-muted">No students registered yet.</p>}
       <h3 className="adm-detail-title">Student suggestions ({ideas.length})</h3>
       {ideas.length ? <>
-        <ul className="adm-suggestions">{ideas.map(i => <li key={i.id}><p>“{i.text}”</p><small>{lookups.users.get(i.userId)?.name} · {agoText(i.at)}</small></li>)}</ul>
+        <ul className="adm-suggestions">{ideas.map(i => <li key={i.id}><p>“{i.text}”</p><small>{lookups.users.get(i.userId) ? <SectionLink section="student" focus={i.userId} className="adm-plain">{lookups.users.get(i.userId)?.name}</SectionLink> : 'Former student'} · {agoText(i.at)}</small></li>)}</ul>
         <Button variant="ink" onClick={generate} disabled={thinking}><Wand2 /> {thinking ? 'Summarizing…' : 'Generate summary'}</Button>
         {summary ? <p className="adm-callout is-sky"><Sparkles /> {summary}</p> : null}
       </> : <p className="db-muted">No suggestions yet.</p>}

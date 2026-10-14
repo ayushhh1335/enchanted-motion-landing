@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { format } from 'date-fns';
 import {
-  CalendarRange, Crown, Dices, Flame, Gift, ImagePlus, LogOut, Mail, PencilLine, Plus, RotateCcw, Save, Send, Sparkles, Ticket, Trash2,
-  Trophy, Users,
+  Banknote, CalendarRange, Crown, Dices, Flag, Flame, Gift, HeartPulse, ImagePlus, LogOut, Mail, PencilLine, Plus, RotateCcw, Save, School, Send,
+  Sparkles, Ticket, Trash2, Trophy, Users,
 } from 'lucide-react';
 import { AppearancePanel } from '@/components/Appearance';
+import { ActivityLog, ChoiceRow, SavedHint, SettingsGroup, SwitchRow, useStoredPrefs } from '@/components/settings-kit';
 import { Button } from '@/components/ui/button';
-import { Dropdown } from '@/components/ui/dropdown';
+import { Dropdown, type DropdownOption } from '@/components/ui/dropdown';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { usePhotoPicker } from '@/components/dashboard/shared';
@@ -21,10 +22,23 @@ import { uid, useAdmin, type LibraryKind } from './store';
 import { AdminTabs, Confirm, Empty, Face, PageHead, Pill, UserCell, day, dollars, userPhoto } from './ui';
 
 type VibeysTab = 'requests' | 'rewards' | 'rules' | 'contests';
+type VibeysPane = 'rewards' | 'actions' | 'contest';
+const vibeysTabs: Record<VibeysPane, VibeysTab[]> = {
+  rewards: ['requests', 'rewards'],
+  actions: ['rules'],
+  contest: ['contests'],
+};
+const vibeysHead: Record<VibeysPane, [string, string]> = {
+  rewards: ['Vibeys Rewards', 'Gift cards students redeem, and the coupon codes waiting to be emailed.'],
+  actions: ['Vibeys Action', 'Points for registration, login, forums, campaigns, friends, comments, and donations. New actions are added in the database.'],
+  contest: ['Grand Contest', 'Set the entry cost and prize, then pick one winner from the entrants.'],
+};
 
-export function VibeysView() {
+export function VibeysView({ pane }: { pane?: VibeysPane | undefined }) {
   const { redemptions, rewards, rules, contests, counts, lookups, actions } = useAdmin();
-  const [tab, setTab] = useState<VibeysTab>('requests');
+  const allowed = pane ? vibeysTabs[pane] : (['requests', 'rewards', 'rules', 'contests'] as VibeysTab[]);
+  const [tab, setTab] = useState<VibeysTab>(allowed[0] ?? 'requests');
+  useEffect(() => { if (pane) setTab(vibeysTabs[pane][0] ?? 'requests'); }, [pane]);
   const [fulfil, setFulfil] = useState<string | null>(null);
   const [coupon, setCoupon] = useState('');
   const [rewardEdit, setRewardEdit] = useState<AdminReward | 'new' | null>(null);
@@ -35,12 +49,15 @@ export function VibeysView() {
   const sorted = [...redemptions].sort((a, b) => Number(b.status === 'requested') - Number(a.status === 'requested') || b.at - a.at);
   const fulfilling = redemptions.find(r => r.id === fulfil);
 
+  const head = pane ? vibeysHead[pane] : ['Vibeys', 'Rewards, earn rules, and the grand contest that keep students coming back.'] as const;
+  const tabItems = [
+    { value: 'requests' as const, label: 'Reward requests', count: counts.redemptions }, { value: 'rewards' as const, label: `Rewards ${rewards.length}` },
+    { value: 'rules' as const, label: 'Earn rules' }, { value: 'contests' as const, label: 'Grand contest', count: counts.contests },
+  ].filter(item => allowed.includes(item.value));
+
   return <section className="db-view">
-    <PageHead title="Vibeys" subtitle="Rewards, earn rules, and the grand contest that keep students coming back." />
-    <AdminTabs label="Vibeys" value={tab} onChange={setTab} items={[
-      { value: 'requests', label: 'Reward requests', count: counts.redemptions }, { value: 'rewards', label: `Rewards ${rewards.length}` },
-      { value: 'rules', label: 'Earn rules' }, { value: 'contests', label: 'Grand contest', count: counts.contests },
-    ]} />
+    <PageHead title={head[0]} subtitle={head[1]} />
+    {tabItems.length > 1 ? <AdminTabs label="Vibeys" value={tab} onChange={setTab} items={tabItems} /> : null}
 
     {tab === 'requests' ? <article className="db-panel adm-table-panel">
       <div className="adm-table-wrap">
@@ -272,11 +289,18 @@ function RuleEditor({ rule, onClose }: { rule: EarnRule | null; onClose: () => v
 }
 
 type LibraryTab = LibraryKind;
+const libraryHead: Record<LibraryTab, [string, string]> = {
+  categories: ['Categories', 'Campaign categories students choose when they publish a fundraiser.'],
+  majors: ['Majors', 'Majors offered on registration and stored on each student profile.'],
+  quotes: ['Quotes', 'One active quote is chosen at random for students.'],
+  ecards: ['eCards', 'Cards a donor can send with a gift. Prices are set in System Configuration.'],
+};
 
-export function LibraryView() {
+export function LibraryView({ pane }: { pane?: LibraryTab | undefined }) {
   const { categories, majors, quotes, ecards, campaigns, users, config, actions } = useAdmin();
-  const [tab, setTab] = useState<LibraryTab>('categories');
+  const [tab, setTab] = useState<LibraryTab>(pane ?? 'categories');
   const [newName, setNewName] = useState('');
+  useEffect(() => { if (pane) { setTab(pane); setNewName(''); } }, [pane]);
   const [rename, setRename] = useState<{ kind: 'categories' | 'majors'; item: LibraryItem } | null>(null);
   const [quoteEdit, setQuoteEdit] = useState<Quote | 'new' | null>(null);
   const [ecardEdit, setEcardEdit] = useState<ECard | 'new' | null>(null);
@@ -320,12 +344,13 @@ export function LibraryView() {
     </article>;
   };
 
+  const head = pane ? libraryHead[pane] : ['Content library', 'Lists and content students see across the app.'] as const;
   return <section className="db-view">
-    <PageHead title="Content library" subtitle="Lists and content students see across the app." />
-    <AdminTabs label="Library" value={tab} onChange={value => { setTab(value); setNewName(''); }} items={[
+    <PageHead title={head[0]} subtitle={head[1]} />
+    {pane ? null : <AdminTabs label="Library" value={tab} onChange={value => { setTab(value); setNewName(''); }} items={[
       { value: 'categories', label: `Categories ${categories.length}` }, { value: 'majors', label: `Majors ${majors.length}` },
       { value: 'quotes', label: `Quotes ${quotes.length}` }, { value: 'ecards', label: `eCards ${ecards.length}` },
-    ]} />
+    ]} />}
     {tab === 'categories' ? named('categories') : null}
     {tab === 'majors' ? named('majors') : null}
     {tab === 'quotes' ? <>
@@ -434,12 +459,41 @@ function EcardEditor({ value, onClose }: { value: ECard | 'new' | null; onClose:
   </Dialog>;
 }
 
-type SettingsTab = 'system' | 'emails' | 'appearance' | 'account';
+const settingsTabs = ['system', 'emails', 'notifications', 'appearance', 'activity', 'account'] as const;
+type SettingsTab = typeof settingsTabs[number];
+const isSettingsTab = (value?: string): value is SettingsTab => settingsTabs.includes(value as SettingsTab);
 
-export function SettingsView() {
-  const { config, templates, actions } = useAdmin();
+const adminPrefDefaults = { withdrawals: true, reports: true, redemptions: true, schools: false, digest: 'daily' as 'daily' | 'weekly' | 'off' };
+const digestOptions: DropdownOption<typeof adminPrefDefaults.digest>[] = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'off', label: 'Off' },
+];
+
+const auditKinds = [
+  { value: 'money', label: 'Money' },
+  { value: 'campaigns', label: 'Campaigns' },
+  { value: 'people', label: 'People & schools' },
+  { value: 'trust', label: 'Trust & safety' },
+  { value: 'platform', label: 'Platform' },
+];
+const auditKind = (text: string) => {
+  const t = text.toLowerCase();
+  if (/withdrawal|payment|refund|payout/.test(t)) return 'money';
+  if (/campaign/.test(t)) return 'campaigns';
+  if (/report|vibe-check|flag|forum|post|comment|wellbeing|removed “/.test(t)) return 'trust';
+  if (/account|suspend|restor|activat|school|user|student/.test(t)) return 'people';
+  return 'platform';
+};
+
+export function SettingsView({ tab: initialTab, pane }: { tab?: string | undefined; pane?: 'system' | 'emails' | undefined }) {
+  const { config, templates, audit, actions } = useAdmin();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<SettingsTab>('system');
+  const locked: SettingsTab | null = pane === 'emails' ? 'emails' : pane === 'system' ? 'system' : null;
+  const [tab, setTab] = useState<SettingsTab>(locked ?? (isSettingsTab(initialTab) ? initialTab : 'system'));
+  useEffect(() => { if (locked) setTab(locked); else if (isSettingsTab(initialTab)) setTab(initialTab); }, [locked, initialTab]);
+  const { prefs, set, savedAt } = useStoredPrefs('byeuni-admin-settings-v1', adminPrefDefaults);
+  const auditItems = useMemo(() => audit.map(entry => ({ ...entry, kind: auditKind(entry.text) })), [audit]);
   const [draft, setDraft] = useState<SystemConfig>(config);
   const [template, setTemplate] = useState<EmailTemplate | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
@@ -450,9 +504,20 @@ export function SettingsView() {
   const fee = useMemo(() => Math.round((sample * (draft.transactionalPct + draft.merchantPct) / 100 + draft.merchantFee) * 100) / 100, [draft]);
   const dirty = JSON.stringify(draft) !== JSON.stringify(config);
 
+  const settingsHead = locked === 'emails'
+    ? ['Email Templates', 'Welcome, withdrawal, and reward emails ByeUni sends.'] as const
+    : locked === 'system'
+      ? ['System Configuration', 'Project name, admin contact, fees, and eCard prices.'] as const
+      : ['Settings', 'Platform fees, system emails, your alerts, and everything you changed in the console.'] as const;
+
   return <section className="db-view">
-    <PageHead title="Settings" subtitle="Platform fees, eCard prices, contact details, and system emails." />
-    <AdminTabs label="Settings" value={tab} onChange={setTab} items={[{ value: 'system', label: 'System configuration' }, { value: 'emails', label: 'Email templates' }, { value: 'appearance', label: 'Appearance' }, { value: 'account', label: 'My account' }]} />
+    <PageHead title={settingsHead[0]} subtitle={settingsHead[1]}>
+      {tab === 'notifications' ? <SavedHint at={savedAt} /> : null}
+    </PageHead>
+    {locked ? null : <AdminTabs label="Settings" value={tab} onChange={setTab} items={[
+      { value: 'system', label: 'System configuration' }, { value: 'emails', label: 'Email templates' }, { value: 'notifications', label: 'Notifications' },
+      { value: 'appearance', label: 'Appearance' }, { value: 'activity', label: 'My activity' }, { value: 'account', label: 'My account' },
+    ]} />}
 
     {tab === 'system' ? <div className="adm-grid-2 is-wide-first">
       <form className="db-panel db-form adm-config" onSubmit={event => { event.preventDefault(); actions.saveConfig(draft); }}>
@@ -513,10 +578,25 @@ export function SettingsView() {
       </div>
     </article> : null}
 
+    {tab === 'notifications' ? <div className="st-groups st-narrow">
+      <SettingsGroup title="Needs your decision" note="Alerts for queues that wait on an admin.">
+        <SwitchRow icon={Banknote} title="Withdrawal requests" note="When a student asks to cash out campaign funds" checked={prefs.withdrawals} onChange={v => set('withdrawals', v)} />
+        <SwitchRow icon={Flag} title="Reports and vibe-check flags" note="Reported posts, comments, and forums" checked={prefs.reports} onChange={v => set('reports', v)} />
+        <SwitchRow icon={HeartPulse} title="Wellbeing alerts" note="Always on, so a student at risk is never missed" checked onChange={() => undefined} disabled />
+        <SwitchRow icon={Gift} title="Reward redemptions" note="When a student redeems Vibeys for a reward" checked={prefs.redemptions} onChange={v => set('redemptions', v)} />
+      </SettingsGroup>
+      <SettingsGroup title="Platform">
+        <SwitchRow icon={School} title="New schools and school admins" checked={prefs.schools} onChange={v => set('schools', v)} />
+        <ChoiceRow icon={Mail} title="Summary email" note={`Sent to ${config.adminEmail}`} value={prefs.digest} onChange={v => set('digest', v)} options={digestOptions} />
+      </SettingsGroup>
+    </div> : null}
+
     {tab === 'appearance' ? <article className="db-panel db-settings">
       <h2>Appearance</h2>
       <AppearancePanel />
     </article> : null}
+
+    {tab === 'activity' ? <ActivityLog items={auditItems} kinds={auditKinds} filename="admin-activity.csv" empty="Changes you make in the console show up here." /> : null}
 
     {tab === 'account' ? <article className="db-panel db-settings">
       <div className="adm-profile-top">

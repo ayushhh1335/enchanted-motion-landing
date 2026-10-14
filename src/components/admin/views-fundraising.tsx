@@ -369,7 +369,7 @@ export function PaymentsView() {
   }
 
   return <section className="db-view">
-    <PageHead title="Transactions" subtitle="Every gift, the fees deducted, and what reached the student.">
+    <PageHead title="Reports" subtitle="Donation totals, fees, payment method, and the fundraiser on each gift.">
       <ExportButton onClick={exportRows} />
     </PageHead>
     <div className="adm-stats is-mini">

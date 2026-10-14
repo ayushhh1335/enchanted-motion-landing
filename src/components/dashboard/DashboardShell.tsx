@@ -1,58 +1,75 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import {
-  Bell, HandHeart, Home, ImagePlus, LogOut, Menu, MessageCircle, PenSquare, Plus, PlusCircle, Search, Settings, UserPlus, Users, UsersRound,
+  ArrowUpRight, Bell, CalendarDays, HandHeart, Home, LogOut, Menu, MessageCircle, Plus, PlusCircle, Search, Settings, Sparkles, Users, UsersRound, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { ThemePicker } from '@/components/Appearance';
 import { LogoMark, Wordmark } from '@/components/site-chrome';
 import { signOutDemo } from '@/lib/demo-session';
-import { ME_ID, me, people } from '@/content/dashboard-data';
+import { ME_ID, isSchoolmate, majorOf, me, people } from '@/content/dashboard-data';
 import { cn } from '@/lib/utils';
+import { CreateMenu } from './CreateMenu';
 import { Composer, Feed } from './Feed';
-import { CVisionPromo, LeftRail, ProfileCard, RightRail, SideNav } from './Rails';
+import { CVisionPromo, DashFooter, LeftRail, ProfileCard, RightRail, SideNav } from './Rails';
+import { MessagesDock } from './MessagesDock';
+import { NotificationsPanel } from './NotificationsPanel';
 import { StoriesRail } from './Stories';
-import { CampaignDialog, ForumDialog } from './dialogs';
-import { InviteDialog, SchoolUpdates, VibeCheck } from './home-widgets';
-import { Avatar, ViewLink, accountItems, faceTone, initials, isAccountTab, isSettingsSection, usePhotoPicker, type View } from './shared';
+import { SchoolUpdates, VibeCheck } from './home-widgets';
+import { Avatar, ViewLink, accountItems, compact, faceTone, initials, isAccountTab, isSettingsSection, type View } from './shared';
 import { useDashboard } from './store';
 import {
-  CommunitiesView, MessagesView, NetworkView, NoticeList, NotificationsView, PersonProfileView, ProfileView, SavedView,
+  CommunitiesView, MessagesView, NetworkView, NotificationsView, PersonProfileView, ProfileView, SavedView,
 } from './views-social';
 import { CampaignsView, EventsView, SettingsView, VibeysView } from './views-growth';
 import { CVisionView, PersonCVisionView } from './cvision/CVisionView';
+import { SuggestionsView } from './views-suggestions';
 
 /** Views that keep the suggestions rail; the rest use its width for content. */
 const withRail: View[] = ['home', 'saved', 'notifications', 'events'];
 
 export function DashboardShell({ view, chat, tab, person }: { view: View; chat?: string | undefined; tab?: string | undefined; person?: string | undefined }) {
+  const { actions } = useDashboard();
   const [menuOpen, setMenuOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
+  const [noticesOpen, setNoticesOpen] = useState(false);
+  const wasOpen = useRef(false);
 
-  return <div className="db-page">
+  useEffect(() => { setNoticesOpen(false); }, [view, chat, tab, person]);
+  // Notices stay highlighted while the drawer is open and count as read once it closes.
+  useEffect(() => {
+    if (wasOpen.current && !noticesOpen) actions.markNoticesRead();
+    wasOpen.current = noticesOpen;
+  }, [noticesOpen, actions]);
+
+  const openCompose = () => setComposeOpen(true);
+
+  return <div className="db-page has-dock">
     <div className="db-aurora" aria-hidden="true"><span /><span /><span /><span /></div>
-    <TopBar onMenu={() => setMenuOpen(true)} onCompose={() => setComposeOpen(true)} />
+    <TopBar onMenu={() => setMenuOpen(true)} onCompose={openCompose} noticesOpen={noticesOpen} onNotices={setNoticesOpen} />
+    <LeftRail active={view} onCompose={openCompose} noticesOpen={noticesOpen} onNotices={setNoticesOpen} />
+    <NotificationsPanel open={noticesOpen} onClose={() => setNoticesOpen(false)} />
     <div className={cn('db-layout', !withRail.includes(view) && 'is-wide', view === 'messages' && 'is-messages')}>
-      <LeftRail active={view} />
       <main className="db-main" id="main">
         <ActiveView view={view} chat={chat} tab={tab} person={person} />
+        {view !== 'messages' ? <DashFooter className="db-main-foot" /> : null}
       </main>
       {withRail.includes(view) ? <RightRail /> : null}
     </div>
-    <BottomNav view={view} onCompose={() => setComposeOpen(true)} />
+    {view !== 'messages' ? <MessagesDock /> : null}
+    <BottomNav view={view} onCompose={openCompose} />
 
     <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
       <SheetContent side="left" className="db-sheet">
         <SheetTitle className="sr-only">Menu</SheetTitle>
         <SheetDescription className="sr-only">Your profile and dashboard sections</SheetDescription>
         <ProfileCard />
-        <SideNav active={view} onNavigate={() => setMenuOpen(false)} />
+        <SideNav active={view} onNavigate={() => setMenuOpen(false)} onNotifications={() => { setMenuOpen(false); setNoticesOpen(true); }} />
         <CVisionPromo />
       </SheetContent>
     </Sheet>
@@ -78,70 +95,65 @@ function ActiveView({ view, chat, tab, person }: { view: View; chat?: string | u
     case 'vibeys': return <VibeysView />;
     case 'cvision': return person && person !== ME_ID ? <PersonCVisionView key={person} personId={person} /> : <CVisionView />;
     case 'saved': return <SavedView />;
+    case 'suggestions': return <SuggestionsView />;
     case 'notifications': return <NotificationsView />;
     case 'profile': return person && person !== ME_ID ? <PersonProfileView key={person} personId={person} /> : <ProfileView />;
     case 'settings': return <SettingsView tab={isSettingsSection(tab) ? tab : undefined} />;
     default: return <>
       <StoriesRail />
       <VibeCheck />
-      <SchoolUpdates />
+      <div className="db-mobile-only"><SchoolUpdates /></div>
       <Feed />
     </>;
   }
 }
 
-function TopBar({ onMenu, onCompose }: { onMenu: () => void; onCompose: () => void }) {
-  const { chats, notices, connections, actions } = useDashboard();
+function TopBar({ onMenu, onCompose, noticesOpen, onNotices }: { onMenu: () => void; onCompose: () => void; noticesOpen: boolean; onNotices: (open: boolean) => void }) {
+  const { chats, notices, vibeys } = useDashboard();
   const navigate = useNavigate();
-  const [campaignOpen, setCampaignOpen] = useState(false);
-  const [forumOpen, setForumOpen] = useState(false);
-  const [inviteOpen, setInviteOpen] = useState(false);
-  const storyPicker = usePhotoPicker(([image]) => { if (image) actions.addStory(image, ''); });
+  const [scrolled, setScrolled] = useState(false);
   const unreadChats = chats.reduce((n, c) => n + c.unread, 0);
   const unreadNotices = notices.filter(n => n.unread).length;
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   function signOut() {
     signOutDemo();
     navigate({ to: '/login' });
   }
 
-  return <header className="db-top">
+  return <header className={cn('db-top', scrolled && 'is-scrolled')}>
     <button type="button" className="db-icon-btn db-menu-btn" aria-label="Open menu" onClick={onMenu}><Menu /></button>
     <ViewLink view="home" className="bj-logo db-logo" aria-label="ByeUni home feed"><LogoMark /><Wordmark /></ViewLink>
     <GlobalSearch />
     <div className="db-top-actions">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ink" className="db-create"><PlusCircle /><span>Create</span></Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="db-menu">
-          <DropdownMenuItem onSelect={onCompose}><PenSquare />Post</DropdownMenuItem>
-          <DropdownMenuItem onSelect={storyPicker.open}><ImagePlus />Story</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setCampaignOpen(true)}><HandHeart />Campaign</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setForumOpen(true)}><UsersRound />Forum</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => setInviteOpen(true)}><UserPlus />Invite friends</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      {storyPicker.element}
-      <ViewLink view="messages" className="db-icon-btn db-badged" aria-label={`Messages, ${unreadChats} unread`}>
+      <CreateMenu onCompose={onCompose}>
+        <Button variant="ink" className="db-create"><PlusCircle /><span>Create</span></Button>
+      </CreateMenu>
+      <ViewLink view="vibeys" className="db-top-vibeys" aria-label={`${vibeys.balance} Vibeys`}>
+        <Sparkles /><b>{compact(vibeys.balance)}</b>
+      </ViewLink>
+      <ViewLink view="messages" className="db-icon-btn db-badged db-top-msgs" aria-label={`Messages, ${unreadChats} unread`}>
         <MessageCircle />{unreadChats ? <em>{unreadChats}</em> : null}
       </ViewLink>
-      <Popover onOpenChange={open => { if (!open && unreadNotices) actions.markNoticesRead(); }}>
-        <PopoverTrigger asChild>
-          <button type="button" className="db-icon-btn db-badged" aria-label={`Notifications, ${unreadNotices} unread`}>
-            <Bell />{unreadNotices ? <em>{unreadNotices}</em> : null}
-          </button>
-        </PopoverTrigger>
-        <PopoverContent align="end" className="db-popover">
-          <header className="db-panel-head"><h2>Notifications</h2><ViewLink view="notifications" className="db-link">See all</ViewLink></header>
-          <NoticeList compactMode notices={notices.slice(0, 5)} connections={connections} onAccept={id => actions.setConnection(id, 'connected')} />
-        </PopoverContent>
-      </Popover>
+      <button
+        type="button"
+        className={cn('db-icon-btn db-badged db-top-bell', noticesOpen && 'is-on')}
+        aria-label={`Notifications, ${unreadNotices} unread`}
+        aria-expanded={noticesOpen}
+        onClick={() => onNotices(!noticesOpen)}
+      >
+        <Bell />{unreadNotices ? <em>{unreadNotices}</em> : null}
+      </button>
       <span className="db-theme"><ThemePicker /></span>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button type="button" className="db-me-btn" aria-label="Account menu"><Avatar person={me} size={38} /></button>
+          <button type="button" className="db-me-btn" aria-label="Account menu"><Avatar person={me} size={36} /></button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="db-menu db-me-menu">
           <DropdownMenuItem asChild>
@@ -157,25 +169,27 @@ function TopBar({ onMenu, onCompose }: { onMenu: () => void; onCompose: () => vo
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
-    <CampaignDialog open={campaignOpen} onOpenChange={setCampaignOpen} />
-    <ForumDialog open={forumOpen} onOpenChange={setForumOpen} />
-    <InviteDialog open={inviteOpen} onOpenChange={setInviteOpen} />
   </header>;
 }
+
+type SearchHit = { id: string; label: string; meta: string; image: string; view: View; icon?: typeof Home };
 
 function GlobalSearch() {
   const { communities, campaigns } = useDashboard();
   const navigate = useNavigate();
+  const input = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
+  const [active, setActive] = useState(0);
   const q = query.trim().toLowerCase();
+
   const results = useMemo(() => {
     if (!q) return [];
-    const found: { id: string; label: string; meta: string; image: string; view: View }[] = [];
+    const found: SearchHit[] = [];
     people.filter(p => p.id !== ME_ID && `${p.name} ${p.school} ${p.major}`.toLowerCase().includes(q))
       .forEach(p => found.push({ id: p.id, label: p.name, meta: `${p.major} · ${p.school}`, image: p.photo, view: 'profile' }));
     accountItems.filter(item => `${item.label} ${item.note}`.toLowerCase().includes(q))
-      .forEach(item => found.push({ id: item.tab, label: item.label, meta: `Settings · ${item.note}`, image: '', view: 'settings' }));
+      .forEach(item => found.push({ id: item.tab, label: item.label, meta: `Settings · ${item.note}`, image: '', view: 'settings', icon: item.icon }));
     communities.filter(c => c.name.toLowerCase().includes(q))
       .forEach(c => found.push({ id: c.id, label: c.name, meta: `Forum · ${c.members.toLocaleString('en-US')} members`, image: c.image, view: 'communities' }));
     campaigns.filter(c => c.title.toLowerCase().includes(q))
@@ -183,34 +197,73 @@ function GlobalSearch() {
     return found.slice(0, 7);
   }, [q, communities, campaigns]);
 
-  function go(view: View, id: string) {
+  const suggestions = useMemo<SearchHit[]>(() => [
+    ...people.filter(p => p.id !== ME_ID && isSchoolmate(p)).slice(0, 3)
+      .map(p => ({ id: p.id, label: p.name, meta: `${majorOf(p)} · ${p.school}`, image: p.photo, view: 'profile' as const })),
+    { id: 'communities', label: 'Forums', meta: 'Browse campus groups', image: '', view: 'communities', icon: UsersRound },
+    { id: 'campaigns', label: 'Fundraising', meta: 'Campaigns you can support', image: '', view: 'campaigns', icon: HandHeart },
+    { id: 'events', label: 'Events', meta: 'What’s on this week', image: '', view: 'events', icon: CalendarDays },
+  ], []);
+
+  const hits = q ? results : suggestions;
+  useEffect(() => { setActive(0); }, [q]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const typing = (event.target as HTMLElement | null)?.closest('input, textarea, select, [contenteditable="true"]');
+      if ((event.key === 'k' && (event.metaKey || event.ctrlKey)) || (event.key === '/' && !typing)) {
+        event.preventDefault();
+        input.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  function go(hit: SearchHit) {
     setQuery('');
     setFocused(false);
+    input.current?.blur();
+    const { view, id } = hit;
     navigate({ to: '/dashboard', search: view === 'settings' ? { view, tab: id } : view === 'profile' ? { view, person: id } : { view } });
   }
 
-  return <div className="db-search">
+  return <div className={cn('db-search', focused && 'is-focused')}>
     <Search aria-hidden="true" />
     <input
+      ref={input}
       value={query}
       onChange={event => setQuery(event.target.value)}
       onFocus={() => setFocused(true)}
       onBlur={() => window.setTimeout(() => setFocused(false), 150)}
-      onKeyDown={event => { if (event.key === 'Enter' && results[0]) go(results[0].view, results[0].id); if (event.key === 'Escape') setQuery(''); }}
-      placeholder="Search for students, universities, forums, campaigns…"
+      onKeyDown={event => {
+        if (event.key === 'ArrowDown') { event.preventDefault(); setActive(i => Math.min(i + 1, hits.length - 1)); }
+        else if (event.key === 'ArrowUp') { event.preventDefault(); setActive(i => Math.max(i - 1, 0)); }
+        else if (event.key === 'Enter' && hits[active]) go(hits[active]);
+        else if (event.key === 'Escape') { setQuery(''); input.current?.blur(); }
+      }}
+      placeholder="Search students, forums, campaigns…"
       aria-label="Search ByeUni"
       role="combobox"
-      aria-expanded={focused && Boolean(q)}
+      aria-expanded={focused}
       aria-controls="db-search-results"
+      aria-activedescendant={focused && hits[active] ? `db-search-hit-${active}` : undefined}
     />
-    {focused && q ? <ul id="db-search-results" className="db-search-results" role="listbox">
-      {results.map(result => <li key={`${result.view}-${result.id}`} role="option" aria-selected="false">
-        <button type="button" onMouseDown={event => event.preventDefault()} onClick={() => go(result.view, result.id)}>
-          {result.image ? <img src={result.image} alt="" /> : <b className="db-initials is-square" style={{ background: faceTone(result.label) }}>{initials(result.label)}</b>}
-          <span><strong>{result.label}</strong><small>{result.meta}</small></span>
+    {query
+      ? <button type="button" className="db-search-clear" aria-label="Clear search" onMouseDown={event => event.preventDefault()} onClick={() => setQuery('')}><X /></button>
+      : <kbd className="db-search-kbd" aria-hidden="true">/</kbd>}
+    {focused ? <ul id="db-search-results" className="db-search-results" role="listbox">
+      <li role="presentation" className="db-search-label">{q ? 'Results' : 'Suggested for you'}</li>
+      {hits.map((hit, i) => <li key={`${hit.view}-${hit.id}`} id={`db-search-hit-${i}`} role="option" aria-selected={i === active}>
+        <button type="button" className={cn(i === active && 'is-active')} onMouseEnter={() => setActive(i)} onMouseDown={event => event.preventDefault()} onClick={() => go(hit)}>
+          {hit.icon
+            ? <b className="db-search-icon"><hit.icon /></b>
+            : hit.image ? <img src={hit.image} alt="" /> : <b className="db-initials is-square" style={{ background: faceTone(hit.label) }}>{initials(hit.label)}</b>}
+          <span><strong>{hit.label}</strong><small>{hit.meta}</small></span>
+          <ArrowUpRight className="db-search-go" aria-hidden="true" />
         </button>
       </li>)}
-      {results.length === 0 ? <li className="db-muted">No results for “{query}”</li> : null}
+      {q && hits.length === 0 ? <li className="db-muted">No results for “{query}”</li> : null}
     </ul> : null}
   </div>;
 }

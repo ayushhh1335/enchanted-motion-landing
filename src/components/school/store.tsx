@@ -6,6 +6,7 @@ import {
   seedUpdates,
   type ActivityEntry, type SchoolForum, type SchoolProfile, type SchoolReport, type SchoolStudent, type SchoolUpdate,
 } from '@/content/school-data';
+import { deleteSharedSuggestions, mergeSuggestions, useSharedSuggestions } from '@/lib/student-sync';
 
 export type Escalation = { campaignId: string; reason: string; at: number };
 
@@ -67,6 +68,9 @@ function useSchoolStore() {
     });
   }, []);
 
+  const shared = useSharedSuggestions();
+  const suggestions = useMemo(() => mergeSuggestions(state.suggestions, shared, state.school.id), [state.suggestions, shared, state.school.id]);
+
   const lookups = useMemo(() => ({
     students: new Map(state.students.map(s => [s.id, s])),
     forums: new Map(state.forums.map(f => [f.id, f])),
@@ -77,12 +81,12 @@ function useSchoolStore() {
     const weekAgo = Date.now() - WEEK;
     return {
       reports: state.reports.filter(r => r.status === 'open').length,
-      newSuggestions: state.suggestions.filter(s => s.at >= weekAgo).length,
+      newSuggestions: suggestions.filter(s => s.at >= weekAgo).length,
       upcoming: state.updates.filter(u => u.eventDate >= startOfToday()).length,
       inactive: state.students.filter(s => !s.enabled || s.invited).length,
       escalations: state.escalations.length,
     };
-  }, [state.reports, state.suggestions, state.updates, state.students, state.escalations]);
+  }, [state.reports, suggestions, state.updates, state.students, state.escalations]);
 
   const name = (id: string) => latest.current.students.find(s => s.id === id)?.name ?? 'This student';
 
@@ -192,6 +196,7 @@ function useSchoolStore() {
 
     // Suggestions
     deleteSuggestions(ids: string[]) {
+      deleteSharedSuggestions(ids);
       commit(s => ({ ...s, suggestions: s.suggestions.filter(x => !ids.includes(x.id)) }), { text: `Deleted ${plural(ids.length, 'suggestion')}`, tone: 'rose' });
       toast.success(`Deleted ${plural(ids.length, 'suggestion')}`);
     },
@@ -219,7 +224,7 @@ function useSchoolStore() {
     },
   }), [commit]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { ...state, lookups, counts, actions };
+  return { ...state, suggestions, lookups, counts, actions };
 }
 
 type SchoolStore = ReturnType<typeof useSchoolStore>;

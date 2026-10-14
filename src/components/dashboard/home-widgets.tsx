@@ -251,6 +251,7 @@ export function VibeCheck() {
           </div>
         </div>
       </div> : null}
+      <SpotlightStrip />
     </section>;
   }
 
@@ -285,6 +286,7 @@ export function VibeCheck() {
         <Button variant="ink" disabled={!words.length} onClick={submit}>{editing ? 'Update check-in' : 'Check in'} <Send /></Button>
       </div>
     </div> : <p className="vc-privacy"><HeartHandshake /> Takes 20 seconds. Your school only sees anonymous campus totals.</p>}
+    <SpotlightStrip />
   </section>;
 }
 
@@ -337,11 +339,15 @@ function whenText(at: number) {
   return `In ${days} days`;
 }
 
-export function SchoolUpdates() {
+/** `compact` is the right-rail version: the next event in school colors, then a short list. */
+export function SchoolUpdates({ compact }: { compact?: boolean }) {
   const { updates, colors, name } = useSchoolFeed();
   const [open, setOpen] = useState<SchoolUpdate | null>(null);
   const [all, setAll] = useState(false);
   const style = { '--su-a': colors[0], '--su-b': colors[1] } as CSSProperties;
+  const today = new Date().setHours(0, 0, 0, 0);
+  const upcoming = updates.filter(u => u.eventDate >= today).length;
+  const addToCalendar = (update: SchoolUpdate) => downloadIcs(update.title, format(update.eventDate, 'yyyy-MM-dd'), name);
 
   const card = (update: SchoolUpdate) => <button key={update.id} type="button" className="su-card" onClick={() => setOpen(update)}>
     <UpdateDate at={update.eventDate} />
@@ -352,13 +358,45 @@ export function SchoolUpdates() {
     </span>
   </button>;
 
-  return <section className="db-panel su-panel" style={style} aria-label={`Recent updates from your school, ${name}`}>
-    <header className="su-head">
-      <span className="su-crest" aria-hidden="true">{name.replace(/University|College|of|The/g, '').trim()[0]}</span>
-      <div><h2>Recent updates from your school</h2><small>{name}</small></div>
-      {updates.length > 3 ? <button type="button" className="db-link" onClick={() => setAll(true)}>Show more</button> : null}
-    </header>
-    {updates.length ? <div className="su-track">{updates.slice(0, 6).map(card)}</div> : <p className="db-muted su-empty"><Megaphone /> No recent updates from {name} yet.</p>}
+  const crest = <span className="su-crest" aria-hidden="true">{name.replace(/University|College|of|The/g, '').trim()[0]}</span>;
+  const [next, ...rest] = updates;
+  const featured = next && next.eventDate >= today ? next : null;
+
+  return <section className={cn('su-panel', compact ? 'db-rr-sec is-compact' : 'db-panel')} style={style} aria-label={`Recent updates from your school, ${name}`}>
+    {compact
+      ? <header className="su-head">
+        {crest}
+        <div><h2>{name}</h2><small>School updates{upcoming ? ` · ${upcoming} upcoming` : ''}</small></div>
+        {updates.length > 1 ? <button type="button" className="db-link" onClick={() => setAll(true)}>See all</button> : null}
+      </header>
+      : <header className="su-head">
+        {crest}
+        <div><h2>Recent updates from your school</h2><small>{name}</small></div>
+        {updates.length > 6 ? <button type="button" className="db-link" onClick={() => setAll(true)}>Show more</button> : null}
+      </header>}
+    {!updates.length
+      ? <p className="db-muted su-empty"><Megaphone /> No recent updates from {name} yet.</p>
+      : compact
+        ? <div className="su-compact">
+          {featured ? <div className="su-feature">
+            <button type="button" className="su-feature-main" onClick={() => setOpen(featured)}>
+              <span className="su-feature-when"><b>{format(featured.eventDate, 'EEE, MMM d')}</b><em>{whenText(featured.eventDate)}</em></span>
+              <strong>{featured.title}</strong>
+              <small>{featured.description}</small>
+            </button>
+            <button type="button" className="su-feature-cal" aria-label={`Add ${featured.title} to calendar`} title="Add to calendar" onClick={() => addToCalendar(featured)}><CalendarPlus /></button>
+          </div> : null}
+          <ul className="su-rows">
+            {(featured ? rest : updates).slice(0, 2).map(update => <li key={update.id}>
+              <button type="button" className="su-row" onClick={() => setOpen(update)}>
+                <UpdateDate at={update.eventDate} />
+                <span><strong>{update.title}</strong><small className={cn(update.eventDate < today && 'is-past')}>{whenText(update.eventDate)}</small></span>
+                <ChevronRight />
+              </button>
+            </li>)}
+          </ul>
+        </div>
+        : <div className="su-track">{updates.slice(0, 6).map(card)}</div>}
 
     <Dialog open={all} onOpenChange={setAll}>
       <DialogContent className="db-dialog su-all">
@@ -379,8 +417,8 @@ export function SchoolUpdates() {
         </dl>
         <div className="db-dialog-actions">
           <Button variant="soft" onClick={() => setOpen(null)}>Close</Button>
-          {open.eventDate >= new Date().setHours(0, 0, 0, 0)
-            ? <Button variant="ink" onClick={() => downloadIcs(open.title, format(open.eventDate, 'yyyy-MM-dd'), name)}><CalendarPlus /> Add to calendar</Button>
+          {open.eventDate >= today
+            ? <Button variant="ink" onClick={() => addToCalendar(open)}><CalendarPlus /> Add to calendar</Button>
             : null}
         </div>
       </DialogContent> : null}
@@ -390,42 +428,34 @@ export function SchoolUpdates() {
 
 /* ---------------- Student of the Day (select_student_cron.php) ---------------- */
 
-export function StudentOfTheDay() {
+/** Lives inside the Vibe Check card so it shows on every screen size. */
+function SpotlightStrip() {
   const { spotlight, connections, actions, kudosSent, chats } = useDashboard();
   const person = personById(spotlight.personId);
   const state = connections[person.id] ?? 'none';
   const chat = chats.find(c => c.personId === person.id);
   const first = person.name.split(' ')[0];
 
-  return <section className="db-panel sotd" aria-label="Student of the Day">
-    <header>
-      <span><Crown /> Student of the Day</span>
-      <small>{format(new Date(), 'EEE, MMM d')}</small>
-    </header>
-    <div className="sotd-id">
-      <ProfileLink personId={person.id} className="sotd-ring" aria-label={`${person.name}'s profile`}><Avatar person={person} size={76} /></ProfileLink>
-      <div>
-        <strong><ProfileLink personId={person.id} className="db-name-link">{person.name}</ProfileLink> {person.verified ? <BadgeCheck className="db-verified" /> : null}</strong>
-        <small>{majorOf(person)} · {person.year}</small>
-      </div>
+  return <div className="sotd-strip" role="group" aria-label="Student of the Day">
+    <ProfileLink personId={person.id} className="sotd-ring" aria-label={`${person.name}'s profile`}><Avatar person={person} size={44} /></ProfileLink>
+    <div className="sotd-strip-text">
+      <small className="sotd-strip-label"><Crown /> Student of the Day · {format(new Date(), 'MMM d')}</small>
+      <strong><ProfileLink personId={person.id} className="db-name-link">{person.name}</ProfileLink> {person.verified ? <BadgeCheck className="db-verified" /> : null}</strong>
+      <span title={spotlight.reason}><Sparkles /> {spotlight.highlight}</span>
     </div>
-    <p className="sotd-reason">{spotlight.reason}</p>
-    <span className="sotd-highlight"><Sparkles /> {spotlight.highlight}</span>
-    <div className="sotd-actions">
-      <Button variant={kudosSent ? 'soft' : 'ink'} size="sm" disabled={kudosSent} onClick={actions.sendKudos}>
-        <PartyPopper /> {kudosSent ? 'Cheered' : 'Cheer'}
-      </Button>
+    <div className="sotd-strip-actions">
       {state === 'connected'
-        ? chat
-          ? <Button variant="soft" size="sm" asChild><Link to="/dashboard" search={{ view: 'messages', chat: chat.id }}><MessageCircle /> Message</Link></Button>
-          : <Button variant="soft" size="sm" disabled><Check /> Friends</Button>
+        ? chat ? <Button variant="soft" size="icon" asChild><Link to="/dashboard" search={{ view: 'messages', chat: chat.id }} aria-label={`Message ${first}`} title={`Message ${first}`}><MessageCircle /></Link></Button> : null
         : state === 'incoming'
-          ? <Button variant="soft" size="sm" onClick={() => { actions.setConnection(person.id, 'connected'); toast.success(`You and ${first} are now friends`); }}><Check /> Accept</Button>
-          : <Button variant="soft" size="sm" onClick={() => actions.setConnection(person.id, state === 'pending' ? 'none' : 'pending')}>
-            {state === 'pending' ? <><X /> Cancel request</> : <><UserPlus /> Add friend</>}
+          ? <Button variant="soft" size="icon" aria-label={`Accept ${first}'s request`} title="Accept request" onClick={() => { actions.setConnection(person.id, 'connected'); toast.success(`You and ${first} are now friends`); }}><Check /></Button>
+          : <Button variant="soft" size="icon" className={cn(state === 'pending' && 'is-pending')} aria-label={state === 'pending' ? 'Cancel friend request' : `Add ${first} as a friend`} title={state === 'pending' ? 'Request sent · tap to cancel' : 'Add friend'} onClick={() => actions.setConnection(person.id, state === 'pending' ? 'none' : 'pending')}>
+            {state === 'pending' ? <Check /> : <UserPlus />}
           </Button>}
+      <Button variant={kudosSent ? 'soft' : 'ink'} size="sm" className="sotd-cheer" disabled={kudosSent} onClick={actions.sendKudos}>
+        <PartyPopper /> {kudosSent ? 'Cheered' : `Cheer ${first}`}
+      </Button>
     </div>
-  </section>;
+  </div>;
 }
 
 /* ---------------- School Friends / Major Friends (homepage.php network suggestions) ---------------- */

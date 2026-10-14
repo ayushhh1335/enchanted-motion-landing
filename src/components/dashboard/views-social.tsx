@@ -26,7 +26,7 @@ export function ViewHeader({ title, subtitle, children }: { title: string; subti
   </header>;
 }
 
-function Tabs<T extends string>({ value, onChange, items, label }: { value: T; onChange: (v: T) => void; items: { value: T; label: string; count?: number }[]; label: string }) {
+export function Tabs<T extends string>({ value, onChange, items, label }: { value: T; onChange: (v: T) => void; items: { value: T; label: string; count?: number }[]; label: string }) {
   return <div className="db-tabs" role="tablist" aria-label={label}>
     {items.map(item => <button key={item.value} type="button" role="tab" aria-selected={value === item.value} onClick={() => onChange(item.value)}>
       {item.label}{item.count ? <em>{item.count}</em> : null}
